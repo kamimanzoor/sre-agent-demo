@@ -92,5 +92,6 @@ output containerAppEnvName string = containerApp.outputs.containerAppEnvName
 output containerAppEnvId string = containerApp.outputs.containerAppEnvId
 output acrName string = containerApp.outputs.acrName
 output acrLoginServer string = containerApp.outputs.acrLoginServer
+output identityPrincipalId string = identity.outputs.identityPrincipalId
 output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspaceId
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
