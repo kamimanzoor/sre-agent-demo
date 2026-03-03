@@ -32,11 +32,19 @@ CONTAINER_APP_NAME=$(azd env get-value CONTAINER_APP_NAME 2>/dev/null || echo ""
 FRONTEND_APP_NAME=$(azd env get-value FRONTEND_APP_NAME 2>/dev/null || echo "")
 ACR_NAME=$(azd env get-value AZURE_CONTAINER_REGISTRY_NAME 2>/dev/null || echo "")
 GITHUB_PAT_VALUE=$(azd env get-value GITHUB_PAT 2>/dev/null || echo "")
+GITHUB_USER=$(azd env get-value GITHUB_USER 2>/dev/null || echo "")
 # azd env get-value outputs error text when key is missing — clean it up
 if echo "$GITHUB_PAT_VALUE" | grep -q "ERROR\|not found"; then
   GITHUB_PAT_VALUE=""
 fi
+if echo "$GITHUB_USER" | grep -q "ERROR\|not found"; then
+  GITHUB_USER=""
+fi
 export GITHUB_PAT_VALUE
+# Build the repo name from username (defaults to dm-chelupati if not set)
+export GITHUB_REPO="${GITHUB_USER:+${GITHUB_USER}/grubify}"
+GITHUB_REPO="${GITHUB_REPO:-dm-chelupati/grubify}"
+export GITHUB_REPO
 
 if [ -z "$AGENT_ENDPOINT" ] || [ -z "$AGENT_NAME" ]; then
   echo "❌ ERROR: Could not read agent details from azd environment."
@@ -280,11 +288,18 @@ except: pass
     fi
   done
 
+  python3 -c "
+import json, os
+repo = os.environ.get('GITHUB_REPO', 'dm-chelupati/grubify')
+body = {'name':'triage-grubify-issues','description':f'Triage open issues in {repo} every 12 hours','cronExpression':'0 */12 * * *','agentPrompt':f'Use the issue-triager subagent to list all open issues in {repo} that have not been triaged yet. For each untriaged issue, classify it, add labels, and post a triage comment following the triage runbook in the knowledge base.','agent':'issue-triager'}
+with open('/tmp/scheduled-task-body.json', 'w') as f: json.dump(body, f)
+"
   HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -X POST "${AGENT_ENDPOINT}/api/v1/scheduledtasks" \
     -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
-    --data-binary '{"name":"triage-grubify-issues","description":"Triage open issues in dm-chelupati/grubify every 12 hours","cronExpression":"0 */12 * * *","agentPrompt":"Use the issue-triager subagent to list all open issues in dm-chelupati/grubify that have not been triaged yet. For each untriaged issue, classify it, add labels, and post a triage comment following the triage runbook in the knowledge base.","agent":"issue-triager"}')
+    --data-binary @/tmp/scheduled-task-body.json)
+  rm -f /tmp/scheduled-task-body.json
   if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
     echo "   ✅ Scheduled task: triage-grubify-issues (every 12h → issue-triager)"
   else

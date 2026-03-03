@@ -21,7 +21,7 @@ spec:
        - Memory pressure → restart container revision, scale up memory
        - HTTP 500 spike → restart revision
        - Dependency failure → check downstream service health
-    5. Create a GitHub issue in dm-chelupati/grubify documenting:
+    5. Create a GitHub issue in GITHUB_REPO_PLACEHOLDER documenting:
        - Root cause based on log analysis
        - Evidence (log excerpts, metrics, KQL queries used)
        - Remediation actions taken

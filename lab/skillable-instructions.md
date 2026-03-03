@@ -19,18 +19,18 @@ Welcome, @lab.User.FirstName! In this lab you will deploy an **Azure SRE Agent**
 
 ### Optional: GitHub Integration
 
-> [!Note] The **core lab** (IT Persona — incident detection, log analysis, remediation) works **without GitHub**. If you have a GitHub account, entering your PAT below unlocks two bonus scenarios: source code root cause analysis and automated issue triage.
+> [!Note] The **core lab** (IT Persona — incident detection, log analysis, remediation) works **without GitHub**. If you have a GitHub account, entering your PAT and username below unlocks two bonus scenarios: source code root cause analysis and automated issue triage.
 
-If you want to use GitHub, create a **Personal Access Token** first:
+If you want to use GitHub:
 
-1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
-2. Click **Generate new token** → **Generate new token (classic)**
-3. Select the **`repo`** scope (this covers code search, issue creation, and labeling)
-4. Click **Generate token** and copy it
+1. **Fork the Grubify repo** — Go to [github.com/dm-chelupati/grubify](https://github.com/dm-chelupati/grubify) and click **Fork** to create a copy in your account
+2. **Create a Personal Access Token** — Go to [github.com/settings/tokens](https://github.com/settings/tokens) → **Generate new token (classic)** → select **`repo`** scope → **Generate token**
+
+**GitHub Username:** @lab.TextBox(githubUser)
 
 **GitHub PAT (optional):** @lab.MaskedTextBox(githubPat)
 
-> [!Alert] If you plan to use the **Workflow Automation** scenario (Part 5), your PAT must have permission to create issues in dm-chelupati/grubify. The **`repo`** scope on a Classic token covers this. For fine-grained tokens, select **Contents: Read** and **Issues: Read and Write** on the repository.
+> [!Alert] Your PAT needs the **`repo`** scope to create issues and search code in your forked repo. The agent will use `@lab.Variable(githubUser)/grubify` for all GitHub operations.
 
 ===
 
@@ -121,13 +121,14 @@ In this section you will clone the lab repository and deploy all Azure resources
     azd env new sre-lab
     ```
 
-1. [] *(Only if you entered a GitHub PAT above)* Set GitHub variables:
+1. [] *(Only if you entered GitHub details above)* Set GitHub variables:
 
     ```
     azd env set GITHUB_PAT "@lab.Variable(githubPat)"
+    azd env set GITHUB_USER "@lab.Variable(githubUser)"
     ```
 
-> [!Hint] If you did **not** enter a GitHub PAT, skip the command above. The core lab works without GitHub.
+> [!Hint] If you did **not** enter GitHub details, skip the commands above. The core lab works without GitHub.
 
 1. [] Deploy everything with a single command:
 
@@ -397,7 +398,7 @@ Before we break things, try a few prompts to see the agent in action. Start a **
 
     ```
     Use the code-analyzer subagent to investigate the Grubify app.
-    Check logs AND search the source code in dm-chelupati/grubify
+    Check logs AND search the source code in @lab.Variable(githubUser)/grubify
     to find the exact root cause of the memory issues. Correlate
     log entries to specific code paths. Create a GitHub issue with
     detailed findings including file:line references and a suggested fix.
@@ -413,7 +414,7 @@ Before we break things, try a few prompts to see the agent in action. Start a **
 
 ### Step 2: Compare the Two GitHub Issues
 
-1. [] Go to [github.com/dm-chelupati/grubify/issues](https://github.com/dm-chelupati/grubify/issues).
+1. [] Go to [github.com/@lab.Variable(githubUser)/grubify/issues](https://github.com/@lab.Variable(githubUser)/grubify/issues).
 
 1. [] Compare the two issues side by side:
 
@@ -428,13 +429,13 @@ Before we break things, try a few prompts to see the agent in action. Start a **
 
 > [!Alert] **This section requires a GitHub PAT.** If you did not provide one during setup, skip to **Part 6: Review & Cleanup**.
 
-**Scenario:** The incident-handler and code-analyzer created GitHub issues in `dm-chelupati/grubify` during Parts 3 and 4. Now use the **issue-triager** subagent to triage those issues — classify them, add labels, and post a structured comment. A scheduled task has also been set up to run this automatically every 12 hours.
+**Scenario:** The incident-handler and code-analyzer created GitHub issues in `@lab.Variable(githubUser)/grubify` during Parts 3 and 4. Now use the **issue-triager** subagent to triage those issues — classify them, add labels, and post a structured comment. A scheduled task has also been set up to run this automatically every 12 hours.
 
 ---
 
 ### Step 1: Check the Issues
 
-1. [] Go to [github.com/dm-chelupati/grubify/issues](https://github.com/dm-chelupati/grubify/issues).
+1. [] Go to [github.com/@lab.Variable(githubUser)/grubify/issues](https://github.com/@lab.Variable(githubUser)/grubify/issues).
 
 1. [] You should see the issues created by the agent in Parts 3 and 4 — currently without triage labels or comments.
 
@@ -448,7 +449,7 @@ Before we break things, try a few prompts to see the agent in action. Start a **
 
     ```
     Use the issue-triager subagent to triage all open issues in
-    dm-chelupati/grubify. For each issue, classify it, add appropriate
+    @lab.Variable(githubUser)/grubify. For each issue, classify it, add appropriate
     labels, and post a triage comment following the triage runbook.
     ```
 
@@ -462,7 +463,7 @@ Before we break things, try a few prompts to see the agent in action. Start a **
 
 ### Step 3: Verify the Results
 
-1. [] Go back to [github.com/dm-chelupati/grubify/issues](https://github.com/dm-chelupati/grubify/issues).
+1. [] Go back to [github.com/@lab.Variable(githubUser)/grubify/issues](https://github.com/@lab.Variable(githubUser)/grubify/issues).
 
 1. [] Verify the issues now have:
     - [] **Labels** applied (bug, needs-more-info, etc.)
