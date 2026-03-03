@@ -30,6 +30,6 @@ spec:
   handoff_description: Triages Grubify app issues by classifying, labeling, and commenting
   agent_type: Autonomous
   tools:
-    - search_memory
+    - SearchMemory
   mcp_tools:
     - github-mcp/*

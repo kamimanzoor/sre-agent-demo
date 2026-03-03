@@ -12,7 +12,7 @@ spec:
   handoff_description: Investigates incidents using runbooks and provides findings
   agent_type: Autonomous
   tools:
-    - search_memory
+    - SearchMemory
     - RunAzCliReadCommands
     - RunAzCliWriteCommands
     - GetAzCliHelp

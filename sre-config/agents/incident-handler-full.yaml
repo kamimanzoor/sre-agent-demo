@@ -13,7 +13,7 @@ spec:
   handoff_description: Investigates incidents using runbooks and creates GitHub issues with findings
   agent_type: Autonomous
   tools:
-    - search_memory
+    - SearchMemory
     - RunAzCliReadCommands
     - RunAzCliWriteCommands
     - GetAzCliHelp
