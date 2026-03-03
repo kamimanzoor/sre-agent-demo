@@ -24,8 +24,8 @@ var roles = [
     id: '73c42c96-874c-492b-b04d-ab87d138a893'
   }
   {
-    name: 'Azure ContainerApps Session Executor'
-    id: 'b3a69362-5523-4a46-9c82-b470ce19b539'
+    name: 'Container Apps Contributor'
+    id: '358470bc-b998-42bd-ab17-a7e34c199c0f'
   }
 ]
 
