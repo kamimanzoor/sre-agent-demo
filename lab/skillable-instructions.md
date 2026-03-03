@@ -269,9 +269,10 @@ Before we break things, try a few prompts to see the agent in action.
     ```
     Using the grubify-architecture document in the knowledge base,
     what are the API routes for the Grubify backend API?
+    Give me a curl command to try one of them.
     ```
 
-    The agent should search the knowledge base and return the API endpoints (restaurants, food items, orders, cart).
+    The agent should search the knowledge base, return the API endpoints (restaurants, food items, orders, cart), and give you a curl command. Try running it in your terminal!
 
 > [!Knowledge] These prompts demonstrate the agent's built-in tools: `RunAzCliReadCommands` for Azure resource queries and `search_memory` for knowledge base search. All configured automatically by `azd up`.
 
