@@ -23,27 +23,24 @@ Grubify is a food ordering web application deployed on **Azure Container Apps**.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Home page / app info |
-| `/health` | GET | Health check — returns 200 if healthy |
-| `/api/menu` | GET | List menu items |
+| `/api/restaurants` | GET | List all restaurants |
+| `/api/fooditems` | GET | List all food items / menu |
 | `/api/orders` | GET | List orders |
 | `/api/orders` | POST | Create a new order |
-| `/api/cart/{userId}/items` | POST | Add item to user's cart (**memory leak trigger**) |
 | `/api/cart/{userId}/items` | GET | Get cart items for a user |
-| `/admin/chaos` | POST | **Fault injection** — toggles chaos mode |
+| `/api/cart/{userId}/items` | POST | Add item to user's cart (**memory leak trigger**) |
+| `/weatherforecast` | GET | Test endpoint — returns sample weather data |
 
 ---
 
-## Fault Injection Methods
-
-### Method 1: Memory Leak via Cart API (Primary)
+## Fault Injection — Memory Leak via Cart API
 
 The `/api/cart/{userId}/items` endpoint stores cart items **in memory** with no eviction policy. Rapid repeated calls cause:
 
 - Memory working set to grow continuously
 - Container to approach its 1Gi memory limit
 - Eventually OOM kill → container restart → HTTP 500/503 errors
-- Azure Monitor fires memory and restart alerts
+- Azure Monitor fires alerts
 
 **Trigger:** Send rapid POST requests to `/api/cart/demo-user/items`
 ```bash
@@ -54,16 +51,6 @@ while true; do
   sleep 0.5
 done
 ```
-
-### Method 2: Chaos Mode Toggle
-
-When chaos mode is enabled via `POST /admin/chaos`:
-
-- All API endpoints start returning **HTTP 500** errors
-- Error logs are written to stdout → picked up by Log Analytics
-- The app simulates realistic failure patterns (unhandled exceptions, timeouts)
-
-**Disable chaos mode:** `POST /admin/chaos` again (toggles off)
 
 ---
 
