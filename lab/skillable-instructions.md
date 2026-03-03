@@ -564,14 +564,15 @@ Everything below was configured automatically when you ran `azd up`:
 
 > [!Knowledge] Quick reference for the concepts you explored:
 >
-> - **Managed Resources**: Resource group IDs the agent monitors — Azure Monitor alerts from these RGs flow automatically
-> - **Knowledge Base**: Your team's runbooks, uploaded as files — the agent references them during investigations
-> - **Subagents**: Specialized agents with specific tools and instructions for different tasks
-> - **Agent Identity**: A managed identity assigned to the agent, granting it Reader/Monitoring/Log Analytics access to your Azure resources
-> - **MCP Connectors**: External tool integrations (GitHub, Datadog, etc.) using the Model Context Protocol
-> - **Response Plans**: Rules that match incoming alerts to subagents based on severity and title patterns
-> - **Scheduled Tasks**: Cron-based automation that runs a subagent on a schedule (e.g., triage issues every 12 hours)
-> - **Autonomous Mode**: The agent takes actions without requiring human approval
+> - **[Managed Resources](https://sre.azure.com/docs/capabilities/incident-response)**: Resource group IDs the agent monitors — Azure Monitor alerts from these RGs flow automatically
+> - **[Knowledge Base](https://sre.azure.com/docs/concepts/memory)**: Your team's runbooks, uploaded as files — the agent references them during investigations
+> - **[Memory](https://sre.azure.com/docs/concepts/memory)**: The agent learns from every conversation — past incidents, user memories, and knowledge base are all searchable via SearchMemory
+> - **[Subagents](https://sre.azure.com/docs/concepts/subagents)**: Specialized agents with specific tools and instructions for different tasks — invoke with `/agent` in chat
+> - **[Agent Identity](https://sre.azure.com/docs/concepts/permissions)**: A managed identity assigned to the agent, granting it Reader/Monitoring/Log Analytics access to your Azure resources
+> - **[Connectors](https://sre.azure.com/docs/concepts/connectors)**: External tool integrations (GitHub, Datadog, etc.) using the Model Context Protocol
+> - **[Response Plans](https://sre.azure.com/docs/capabilities/incident-response)**: Rules that match incoming alerts to subagents based on severity and title patterns
+> - **[Scheduled Tasks](https://sre.azure.com/docs/capabilities/scheduled-tasks)**: Cron-based automation that runs a subagent on a schedule (e.g., triage issues every 12 hours)
+> - **[Autonomous Mode](https://sre.azure.com/docs/concepts/subagents)**: The agent takes actions without requiring human approval
 
 ---
 
