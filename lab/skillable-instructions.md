@@ -262,25 +262,16 @@ Before we break things, try a few prompts to see the agent in action. Start a **
     - [] **Add an item to your cart** — it should work fine
     - [] This is the app working normally — remember this for when we break it!
 
-1. [] Ask about the knowledge base:
+1. [] Ask about the app's API routes using the knowledge base:
 
     ```
-    What runbooks do you have in your knowledge base? Summarize
-    the http-500-errors runbook.
+    Using the grubify-architecture document in the knowledge base,
+    what are the API routes for the Grubify backend API?
     ```
 
-    The agent should search your uploaded files and summarize the troubleshooting steps.
+    The agent should search the knowledge base and return the API endpoints (restaurants, food items, orders, cart).
 
-1. [] Ask about monitoring:
-
-    ```
-    Check the health of the Grubify container app. Show me the
-    CPU and memory metrics for the last 30 minutes.
-    ```
-
-    The agent should run az CLI commands and KQL queries to pull live metrics.
-
-> [!Knowledge] These prompts demonstrate the agent's built-in tools: `RunAzCliReadCommands` for Azure resource queries, `QueryLogAnalyticsByWorkspaceId` for KQL, `QueryAppInsightsByResourceId` for telemetry, and `search_memory` for knowledge base search. All configured automatically by `azd up`.
+> [!Knowledge] These prompts demonstrate the agent's built-in tools: `RunAzCliReadCommands` for Azure resource queries and `search_memory` for knowledge base search. All configured automatically by `azd up`.
 
 ===
 
