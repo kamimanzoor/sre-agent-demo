@@ -106,6 +106,15 @@ elif [ -n "$ACR_NAME" ] && [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
     azd env set FRONTEND_APP_URL "$FRONTEND_URL" 2>/dev/null || true
 
     echo "   ✅ Frontend deployed: ${FRONTEND_URL}"
+
+    # Set CORS on the API to allow requests from the frontend
+    echo "   Configuring CORS on API..."
+    az containerapp update \
+      --name "$CONTAINER_APP_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --set-env-vars "AllowedOrigins__0=${FRONTEND_URL}" \
+      --output none 2>/dev/null
+    echo "   ✅ CORS configured"
   fi
 else
   echo "   ⏭️  Skipped (ACR or source not found — using placeholder image)"
