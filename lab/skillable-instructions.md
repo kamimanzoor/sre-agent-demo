@@ -492,15 +492,15 @@ This sends another burst of requests to the cart API, triggering new 500 errors 
 
 > [!Alert] **This section requires a GitHub PAT.** If you did not provide one during setup, skip to **Part 6: Review & Cleanup**.
 
-**Scenario:** The incident-handler and code-analyzer created GitHub issues in `@lab.Variable(githubUser)/grubify` during Parts 3 and 4. Now use the **issue-triager** subagent to triage those issues — classify them, add labels, and post a structured comment. A scheduled task has also been set up to run this automatically every 12 hours.
+**Scenario:** During setup, `azd up` created 5 sample customer-reported issues in `@lab.Variable(githubUser)/grubify` — these simulate real user complaints like "App crashes when adding items to cart" and "Can't place an order." Now use the **issue-triager** subagent to triage those issues — classify them, add labels, and post a structured comment. A scheduled task runs this automatically every 12 hours.
 
 ---
 
-### Step 1: Check the Issues
+### Step 1: Check the Customer Issues
 
 1. [] Go to [github.com/@lab.Variable(githubUser)/grubify/issues](https://github.com/@lab.Variable(githubUser)/grubify/issues).
 
-1. [] You should see the issues created by the agent in Parts 3 and 4 — currently without triage labels or comments.
+1. [] You should see several issues — look for the ones with **[Customer Issue]** in the title. These are the simulated customer reports that need triaging.
 
 ---
 
@@ -524,18 +524,22 @@ This sends another burst of requests to the cart API, triggering new 500 errors 
 
 1. [] Once the task completes, go to [github.com/@lab.Variable(githubUser)/grubify/issues](https://github.com/@lab.Variable(githubUser)/grubify/issues).
 
-1. [] Open the most recent issue (created by incident-handler or code-analyzer in Parts 3/4).
+1. [] Open one of the **[Customer Issue]** issues (e.g., "App crashes when adding items to cart").
 
-1. [] Scroll down to the comments section. You should see a comment from the triager:
+1. [] Scroll down to the comments section. You should see a triage comment:
 
     - [] Comment starts with "🤖 **Grubify SRE Agent Bot**"
-    - [] For issues that already had labels: the comment says **"the team is looking into it"**
-    - [] For unlabeled issues: the comment includes classification, severity, and a status line
+    - [] Classification: Bug, Performance, Feature Request, or Question
+    - [] Labels applied: `bug`, `api-bug`, `severity-high`, `needs-more-info`, etc.
+    - [] Status line at the end (e.g., "Ready for investigation" or "Waiting for info")
 
-1. [] Check if labels were applied or preserved:
-    - [] **Labels** like `bug`, `api-bug`, `memory-leak`, `severity-high` should be present
+1. [] Check a few other [Customer Issue] issues to see how different types were classified:
+    - [] The cart crash → Bug (api-bug, severity-high)
+    - [] Slow menu page → Performance
+    - [] Restaurant search → Feature Request
+    - [] How to clear cart → Question
 
-> [!Knowledge] The scheduled task was created by `azd up`. It runs the issue-triager subagent automatically every 12 hours, so new issues get triaged without anyone manually triggering it.
+> [!Knowledge] The triager only processes issues with **[Customer Issue]** in the title — it skips the detailed incident reports created by the incident-handler and code-analyzer (since those are already fully analyzed). The scheduled task runs automatically every 12 hours, so new customer issues get triaged without manual intervention.
 
 ===
 

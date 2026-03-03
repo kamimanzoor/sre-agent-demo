@@ -1,12 +1,12 @@
 # Grubify App Issue Triage Runbook
 
-Triage incoming issues for the Grubify food ordering application. Classify them, add labels, and route to the right team.
+Triage incoming customer issues for the Grubify food ordering application. Focus on issues with **[Customer Issue]** in the title — these are user-reported problems. Classify them, add labels, and post a triage comment.
 
 ---
 
 ## Step 1: Get Open Issues
 
-Fetch all open issues from the repo. Focus on issues that are unassigned and unlabeled.
+Fetch all open issues from the repo. Focus on issues that have **[Customer Issue]** in the title and are unassigned/unlabeled. Skip issues that don't have the [Customer Issue] prefix (those are internal agent-created reports).
 
 ---
 

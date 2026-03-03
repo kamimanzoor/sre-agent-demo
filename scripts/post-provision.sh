@@ -316,6 +316,12 @@ with open('/tmp/mcp-connector-body.json', 'w') as f: json.dump(body, f)
     -F "files=@./knowledge-base/github-issue-triage.md;type=text/plain"
   echo "   ✅ Uploaded: github-issue-triage.md"
 
+  # Create sample customer issues for triage demo
+  echo "   Creating sample customer issues..."
+  export GITHUB_REPO GITHUB_PAT_VALUE
+  export GITHUB_PAT="${GITHUB_PAT_VALUE}"
+  bash ./scripts/create-sample-issues.sh "${GITHUB_REPO}" 2>/dev/null || echo "   ⚠️  Could not create sample issues"
+
   # Create additional subagents
   create_subagent "sre-config/agents/code-analyzer.yaml" "code-analyzer"
   create_subagent "sre-config/agents/issue-triager.yaml" "issue-triager"
@@ -343,7 +349,7 @@ except: pass
   python3 -c "
 import json, os
 repo = os.environ.get('GITHUB_REPO', 'dm-chelupati/grubify')
-body = {'name':'triage-grubify-issues','description':f'Triage open issues in {repo} every 12 hours','cronExpression':'0 */12 * * *','agentPrompt':f'Use the issue-triager subagent to list all open issues in {repo} that have not been triaged yet. For each untriaged issue, classify it, add labels, and post a triage comment following the triage runbook in the knowledge base.','agent':'issue-triager'}
+body = {'name':'triage-grubify-issues','description':f'Triage customer issues in {repo} every 12 hours','cronExpression':'0 */12 * * *','agentPrompt':f'Use the issue-triager subagent to list all open issues in {repo} that have [Customer Issue] in the title and have not been triaged yet. For each untriaged customer issue, classify it, add labels, and post a triage comment following the triage runbook in the knowledge base.','agent':'issue-triager'}
 with open('/tmp/scheduled-task-body.json', 'w') as f: json.dump(body, f)
 "
   HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
