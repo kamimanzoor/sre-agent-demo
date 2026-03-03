@@ -23,21 +23,24 @@ Welcome, @lab.User.FirstName! In this lab you will deploy an **Azure SRE Agent**
 
 If you want to use GitHub:
 
-1. **Create a Personal Access Token** — Go to [github.com/settings/tokens](https://github.com/settings/tokens) → **Generate new token (classic)** → select **`repo`** scope → **Generate token**
-2. Enter your details below:
+1. Enter your GitHub username below:
 
 **GitHub Username:** @lab.TextBox(githubUser)
 
-**GitHub PAT (optional):** @lab.MaskedTextBox(githubPat)
-
-3. **Fork the Grubify repo** — Open a terminal on the VM and run:
+2. **Fork the Grubify repo** — Open a terminal on the VM and run:
 
     ```
-    gh auth login --with-token <<< "@lab.Variable(githubPat)"
+    gh auth login
     gh repo fork dm-chelupati/grubify --clone=false
     ```
 
-> [!Alert] Your PAT needs the **`repo`** scope to create issues and search code in your forked repo. The agent will use `@lab.Variable(githubUser)/grubify` for all GitHub operations.
+    Follow the browser prompts to sign in to GitHub. When asked about protocol, select **HTTPS**.
+
+3. **Create a Personal Access Token** for the SRE Agent — Go to [github.com/settings/tokens](https://github.com/settings/tokens) → **Generate new token (classic)** → select **`repo`** scope → **Generate token** → paste it below:
+
+**GitHub PAT:** @lab.MaskedTextBox(githubPat)
+
+> [!Alert] The PAT is needed for the SRE Agent to create issues and search code in your repo. The `gh auth login` above is for your terminal only — the agent needs its own token.
 
 ===
 
