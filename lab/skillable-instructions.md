@@ -236,14 +236,31 @@ Before diving into specific scenarios, explore what `azd up` configured for you.
 
 Before we break things, try a few prompts to see the agent in action. Start a **new chat** in the SRE Agent portal and try these:
 
-1. [] Ask about the app:
+1. [] Ask how many container apps are deployed:
 
     ```
-    What is the Grubify application? What container apps are running
-    in my resource group?
+    How many container apps are deployed for the Grubify application
+    in my resource group? List them with their endpoints.
     ```
 
-    The agent should query your Azure resources and describe the Grubify container app.
+    The agent should find both the API and frontend container apps and list their URLs.
+
+1. [] Ask for the frontend endpoint:
+
+    ```
+    What is the public endpoint URL for the Grubify frontend
+    container app?
+    ```
+
+    The agent should return the frontend FQDN. Copy the URL from the response.
+
+1. [] Open the Grubify app in your browser:
+
+    - [] Click the frontend URL the agent gave you
+    - [] You should see the Grubify food ordering app with restaurants
+    - [] Click on a restaurant, browse the menu
+    - [] **Add an item to your cart** — it should work fine
+    - [] This is the app working normally — remember this for when we break it!
 
 1. [] Ask about the knowledge base:
 
@@ -262,15 +279,6 @@ Before we break things, try a few prompts to see the agent in action. Start a **
     ```
 
     The agent should run az CLI commands and KQL queries to pull live metrics.
-
-1. [] Ask about the app endpoint:
-
-    ```
-    What is the public endpoint URL for the Grubify frontend
-    container app?
-    ```
-
-    The agent should find the FQDN from the container app configuration.
 
 > [!Knowledge] These prompts demonstrate the agent's built-in tools: `RunAzCliReadCommands` for Azure resource queries, `QueryLogAnalyticsByWorkspaceId` for KQL, `QueryAppInsightsByResourceId` for telemetry, and `search_memory` for knowledge base search. All configured automatically by `azd up`.
 
