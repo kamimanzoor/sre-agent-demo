@@ -47,7 +47,10 @@ spec:
   tools:
     - search_memory
     - RunAzCliReadCommands
+    - RunAzCliWriteCommands
+    - RunAzCliHelpCommands
     - QueryLogAnalyticsByWorkspaceId
     - QueryAppInsightsByResourceId
+    - ExecutePythonCode
   mcp_tools:
     - github-mcp/*

@@ -24,7 +24,11 @@ spec:
     3. Also search knowledge base for grubify-architecture.md to understand the app
     4. Collect all evidence: query results, metric values, timestamps
     5. Apply remediation based on findings
-    6. Provide a summary with root cause, evidence, and actions taken
+    6. Plot key metrics as bar charts using Python (ExecutePythonCode):
+       - Memory usage over time (WorkingSetBytes)
+       - CPU usage over time (UsageNanoCores)
+       - Error count by time period
+    7. Provide a summary with root cause, evidence, charts, and actions taken
 
     Always search memory for similar past incidents first.
   handoff_description: Handles Azure Monitor alerts, investigates HTTP errors and memory issues, and remediates issues for Grubify
@@ -32,5 +36,8 @@ spec:
   tools:
     - search_memory
     - RunAzCliReadCommands
+    - RunAzCliWriteCommands
+    - RunAzCliHelpCommands
     - QueryLogAnalyticsByWorkspaceId
     - QueryAppInsightsByResourceId
+    - ExecutePythonCode
