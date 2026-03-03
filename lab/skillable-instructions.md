@@ -27,20 +27,29 @@ If you want to use GitHub:
 
 **GitHub Username:** @lab.TextBox(githubUser)
 
-2. **Fork the Grubify repo** — Open a terminal on the VM and run:
+2. **Sign in to GitHub and fork the repo** — Open a terminal on the VM and run:
 
     ```
     gh auth login
+    ```
+
+    Follow the browser prompts to sign in. When asked, select **HTTPS** and authenticate via browser.
+
+    Then fork the Grubify repo:
+
+    ```
     gh repo fork dm-chelupati/grubify --clone=false
     ```
 
-    Follow the browser prompts to sign in to GitHub. When asked about protocol, select **HTTPS**.
+3. **Extract your token** for the SRE Agent — run this command and paste the output below:
 
-3. **Create a Personal Access Token** for the SRE Agent — Go to [github.com/settings/tokens](https://github.com/settings/tokens) → **Generate new token (classic)** → select **`repo`** scope → **Generate token** → paste it below:
+    ```
+    gh auth token
+    ```
 
 **GitHub PAT:** @lab.MaskedTextBox(githubPat)
 
-> [!Alert] The PAT is needed for the SRE Agent to create issues and search code in your repo. The `gh auth login` above is for your terminal only — the agent needs its own token.
+> [!Alert] The token from `gh auth token` is used by the SRE Agent's GitHub MCP connector to create issues and search code in your forked repo.
 
 ===
 
