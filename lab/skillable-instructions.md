@@ -372,6 +372,29 @@ Before we break things, try a few prompts to see the agent in action.
 
 > [!Knowledge] **What just happened?** The entire investigation was autonomous. The response plan routes all Azure Monitor alerts from the managed resource group to the `incident-handler` subagent. That subagent used KQL queries from the knowledge base runbook, searched memory for patterns, checked metrics, and applied remediation — then created a GitHub issue documenting everything. All without human intervention.
 
+---
+
+### Step 4: Ask the Agent to Mitigate
+
+1. [] In the same incident thread, type the following in the chat:
+
+    ```
+    Can you mitigate this issue? Restart the container app to clear 
+    the memory leak and verify the app is responding again.
+    ```
+
+1. [] Watch the agent take action:
+    - [] **Restart**: The agent restarts the container app revision to clear the leaked memory
+    - [] **Verify**: Checks the app endpoints to confirm it's healthy again
+
+1. [] Once the agent confirms the app is back, verify it yourself:
+
+    ```
+    curl https://@lab.Variable(grubifyUrl)/weatherforecast
+    ```
+
+    - [] You should get a JSON response — the app is healthy again!
+
 ===
 
 # Part 4: Developer Persona — Deep Root Cause with Source Code
@@ -426,6 +449,32 @@ Before we break things, try a few prompts to see the agent in action.
     - [] **Issue from code-analyzer** (Part 4): Same log evidence PLUS — "Root cause in `CartService.cs` line 45: in-memory dictionary grows unbounded. Suggested fix: add LRU eviction or max size limit"
 
 > [!Knowledge] **The delta is clear:** Adding source code search to the investigation takes the agent from "what happened" (logs) to "why it happened and how to fix it" (code). Same tools, different instructions — the code-analyzer subagent is instructed to search source code and provide code-level fixes, producing significantly richer findings.
+
+---
+
+### Step 3: Ask the Agent to Mitigate
+
+1. [] Start a **new chat** by clicking the **+ New Chat** button.
+
+1. [] Ask the agent to fix the issue:
+
+    ```
+    The Grubify cart API has a memory leak causing OOM crashes.
+    Can you mitigate it by restarting the container app and 
+    verifying the app is healthy again?
+    ```
+
+1. [] Watch the agent:
+    - [] **Restart** the container app to clear leaked memory
+    - [] **Verify** the endpoints are responding
+
+1. [] Confirm the app is back yourself:
+
+    ```
+    curl https://@lab.Variable(grubifyUrl)/weatherforecast
+    ```
+
+    - [] You should get a JSON response — the app is healthy again!
 
 ===
 
