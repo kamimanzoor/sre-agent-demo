@@ -370,12 +370,6 @@ Before we break things, try a few prompts to see the agent in action.
     - [] Timeline of events (when errors started, when remediation was applied)
     - [] Root cause conclusion
 
-1. [] Verify the app is responding:
-
-    ```
-    curl https://@lab.Variable(grubifyUrl)/weatherforecast
-    ```
-
 > [!Knowledge] **What just happened?** The entire investigation was autonomous. The response plan routes all Azure Monitor alerts from the managed resource group to the `incident-handler` subagent. That subagent used KQL queries from the knowledge base runbook, searched memory for patterns, checked metrics, and applied remediation — then created a GitHub issue documenting everything. All without human intervention.
 
 ===
