@@ -22,6 +22,9 @@ spec:
     Search memory for "incident report template" and follow that format exactly
     when creating GitHub issues — include structured sections for Summary,
     Impact, Timeline, Evidence, Root Cause, Remediation, and Action Items.
+    IMPORTANT: Fill out EVERY section completely — do not leave any section
+    empty or skip the References section. Include full ARM resource IDs,
+    workspace IDs, and App Insights resource IDs in References.
   handoff_description: Deep root cause analysis using runbooks + source code, creates detailed GitHub issues
   agent_type: Autonomous
   tools:
