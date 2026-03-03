@@ -49,7 +49,7 @@ if [ -n "$ACR_NAME" ] && [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
     --image "grubify-api:latest" \
     --file "$PROJECT_DIR/src/grubify/GrubifyApi/Dockerfile" \
     "$PROJECT_DIR/src/grubify/GrubifyApi" \
-    --no-logs 2>/dev/null
+    --no-logs --output none 2>/dev/null
 
   echo "   ✅ Built: ${IMAGE_TAG}"
 
@@ -93,7 +93,7 @@ create_subagent() {
     -H "Content-Type: application/json" \
     --data-binary @"/tmp/${agent_name}-body.json")
 
-  if [ "$http_code" = "200" ] || [ "$http_code" = "201" ] || [ "$http_code" = "204" ]; then
+  if [ "$http_code" = "200" ] || [ "$http_code" = "201" ] || [ "$http_code" = "202" ] || [ "$http_code" = "204" ]; then
     echo "   ✅ Created: ${agent_name}"
   else
     echo "   ⚠️  ${agent_name} returned HTTP ${http_code}"
@@ -103,7 +103,7 @@ create_subagent() {
 }
 
 # ── Step 1: Upload knowledge base files ──────────────────────────────────────
-echo "📚 Step 1/5: Uploading knowledge base..."
+echo "📚 Step 1/4: Uploading knowledge base..."
 TOKEN=$(get_token)
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -121,7 +121,7 @@ fi
 echo ""
 
 # ── Step 2: Create incident-handler subagent ─────────────────────────────────
-echo "🤖 Step 2/5: Creating incident-handler subagent..."
+echo "🤖 Step 2/4: Creating incident-handler subagent..."
 if [ -n "$GITHUB_PAT_VALUE" ]; then
   echo "   GitHub PAT detected — using full config"
   create_subagent "sre-config/agents/incident-handler-full.yaml" "incident-handler"
@@ -131,25 +131,27 @@ else
 fi
 echo ""
 
-# ── Step 3: Create incident response plan ────────────────────────────────────
-echo "🚨 Step 3/5: Creating incident response plan..."
+# ── Step 3: Create incident response plan (links alert → subagent) ────────────
+echo "🚨 Step 3/4: Creating incident response plan..."
 TOKEN=$(get_token)
 
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X PUT "${AGENT_ENDPOINT}/api/v1/incidentplayground/filters/grubify-http-errors" \
+HTTP_CODE=$(curl -s -o /tmp/response-plan-resp.txt -w "%{http_code}" \
+  -X PUT "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/grubify-http-errors" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   --data-binary '{"id":"grubify-http-errors","name":"Grubify HTTP 5xx Errors","priority":"3","titleContains":"5xx","handlingAgent":"incident-handler","agentMode":"autonomous","maxAttempts":3}')
 
-if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-  echo "   ✅ Created: grubify-http-errors response plan"
+if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
+  echo "   ✅ Created: response plan → incident-handler subagent"
 else
-  echo "   ⚠️  Response plan returned HTTP ${HTTP_CODE}"
+  echo "   ⚠️  Response plan returned HTTP ${HTTP_CODE} (can be set up in portal instead)"
+  cat /tmp/response-plan-resp.txt 2>/dev/null | head -2
 fi
+rm -f /tmp/response-plan-resp.txt
 echo ""
 
 # ── Step 4: GitHub integration (optional) ────────────────────────────────────
-echo "🔗 Step 4/5: GitHub integration..."
+echo "🔗 Step 4/4: GitHub integration..."
 
 if [ -n "$GITHUB_PAT_VALUE" ]; then
   # Upload triage runbook
