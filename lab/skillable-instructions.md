@@ -520,13 +520,20 @@ This sends another burst of requests to the cart API, triggering new 500 errors 
 
 ---
 
-### Step 3: Verify the Results
+### Step 3: Check the Triage Comments
 
-1. [] Go back to [github.com/@lab.Variable(githubUser)/grubify/issues](https://github.com/@lab.Variable(githubUser)/grubify/issues).
+1. [] Once the task completes, go to [github.com/@lab.Variable(githubUser)/grubify/issues](https://github.com/@lab.Variable(githubUser)/grubify/issues).
 
-1. [] Verify the issues now have:
-    - [] **Labels** applied (bug, api-bug, memory-leak, severity-high, etc.)
-    - [] A **triage comment** from the agent starting with "🤖 **Grubify SRE Agent Bot**"
+1. [] Open the most recent issue (created by incident-handler or code-analyzer in Parts 3/4).
+
+1. [] Scroll down to the comments section. You should see a comment from the triager:
+
+    - [] Comment starts with "🤖 **Grubify SRE Agent Bot**"
+    - [] For issues that already had labels: the comment says **"the team is looking into it"**
+    - [] For unlabeled issues: the comment includes classification, severity, and a status line
+
+1. [] Check if labels were applied or preserved:
+    - [] **Labels** like `bug`, `api-bug`, `memory-leak`, `severity-high` should be present
 
 > [!Knowledge] The scheduled task was created by `azd up`. It runs the issue-triager subagent automatically every 12 hours, so new issues get triaged without anyone manually triggering it.
 
