@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Convert YAML subagent spec to JSON for the dataplane v2 API."""
+"""Convert YAML subagent spec to JSON for the dataplane v2 API.
+
+The API expects an envelope: { name, type, tags, owner, properties: { ... } }
+where properties contains camelCase fields matching ExtendedAgentSpecV2.
+YAML uses snake_case (system_prompt, handoff_description, etc.) but the API
+uses camelCase (instructions, handoffDescription, etc.).
+"""
 import yaml, json, sys
 
 yaml_file = sys.argv[1]
@@ -10,14 +16,21 @@ with open(yaml_file) as f:
 
 spec = data["spec"]
 
+# Build the API envelope matching what srectl sends
 api_body = {
     "name": spec["name"],
-    "system_prompt": spec.get("system_prompt", ""),
-    "handoff_description": spec.get("handoff_description", ""),
-    "handoffs": [],
-    "tools": spec.get("tools", []),
-    "mcp_tools": spec.get("mcp_tools", []),
-    "agent_type": spec.get("agent_type", "Autonomous"),
+    "type": "ExtendedAgent",
+    "tags": [],
+    "owner": "",
+    "properties": {
+        "instructions": spec.get("system_prompt", ""),
+        "handoffDescription": spec.get("handoff_description", ""),
+        "handoffs": spec.get("handoffs", []),
+        "tools": spec.get("tools", []),
+        "mcpTools": spec.get("mcp_tools", []),
+        "allowParallelToolCalls": True,
+        "enableSkills": True,
+    }
 }
 
 with open(output_file, "w") as f:
