@@ -189,7 +189,7 @@ Before diving into specific scenarios, explore what `azd up` configured for you.
     | **grubify-architecture.md** | App architecture, endpoints, scaling config |
     | **github-issue-triage.md** | Grubify app issue triage runbook (if GitHub configured) |
 
-> [!Note] These files were uploaded automatically by the post-provision script using `srectl doc upload`. The agent references YOUR runbooks during investigations — not generic advice.
+> [!Note] These files were uploaded automatically by the post-provision script. The agent references YOUR runbooks during investigations — not generic advice.
 
 ---
 
@@ -199,7 +199,7 @@ Before diving into specific scenarios, explore what `azd up` configured for you.
 
 1. [] You should see the **incident-handler** subagent with:
     - **Autonomy:** Autonomous
-    - **Tools:** search_memory (+ github-mcp/* if GitHub was configured)
+    - **Tools:** SearchMemory, RunAzCliReadCommands, QueryLogAnalyticsByWorkspaceId (+ github-mcp/* if GitHub was configured)
 
 1. [] Click on **incident-handler** to see its system prompt and tool assignments.
 
@@ -274,7 +274,7 @@ Before we break things, try a few prompts to see the agent in action.
 
     The agent should search the knowledge base, return the API endpoints (restaurants, food items, orders, cart), and give you a curl command. Try running it in your terminal!
 
-> [!Knowledge] These prompts demonstrate the agent's built-in tools: `RunAzCliReadCommands` for Azure resource queries and `search_memory` for knowledge base search. All configured automatically by `azd up`.
+> [!Knowledge] These prompts demonstrate the agent's built-in tools: `RunAzCliReadCommands` for Azure resource queries and `SearchMemory` for knowledge base search. All configured automatically by `azd up`.
 
 ===
 
@@ -564,10 +564,10 @@ Everything below was configured automatically when you ran `azd up`:
 - [] Log Analytics Workspace + Application Insights (Bicep)
 - [] Grubify Container App with external ingress (Bicep)
 - [] Azure Monitor alert rules — HTTP 5xx metric + error log alerts (Bicep)
-- [] Knowledge base files uploaded (srectl post-provision hook)
-- [] Incident handler subagent created (srectl post-provision hook)
-- [] Incident response plan created (srectl post-provision hook)
-- [] *(If GitHub PAT)* GitHub MCP connector, code-analyzer, issue-triager (srectl post-provision hook)
+- [] Knowledge base files uploaded (post-provision script)
+- [] Incident handler subagent created (post-provision script)
+- [] Incident response plan created (post-provision script)
+- [] *(If GitHub PAT)* GitHub MCP connector, code-analyzer, issue-triager, sample customer issues (post-provision script)
 
 ---
 
