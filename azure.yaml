@@ -8,14 +8,8 @@ infra:
   provider: bicep
   path: infra
 
-services:
-  grubify-api:
-    project: ./src/grubify/GrubifyApi
-    language: docker
-    host: containerapp
-    docker:
-      path: Dockerfile
-      context: .
+# No services block — container image is built in the cloud via ACR Tasks
+# in the post-provision hook. No Docker Desktop needed on the lab machine.
 
 hooks:
   postprovision:

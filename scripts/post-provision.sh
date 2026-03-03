@@ -25,6 +25,8 @@ AGENT_ENDPOINT=$(azd env get-value SRE_AGENT_ENDPOINT 2>/dev/null || echo "")
 AGENT_NAME=$(azd env get-value SRE_AGENT_NAME 2>/dev/null || echo "")
 RESOURCE_GROUP=$(azd env get-value AZURE_RESOURCE_GROUP 2>/dev/null || echo "")
 CONTAINER_APP_URL=$(azd env get-value CONTAINER_APP_URL 2>/dev/null || echo "")
+CONTAINER_APP_NAME=$(azd env get-value CONTAINER_APP_NAME 2>/dev/null || echo "")
+ACR_NAME=$(azd env get-value AZURE_CONTAINER_REGISTRY_NAME 2>/dev/null || echo "")
 GITHUB_PAT_VALUE=$(azd env get-value GITHUB_PAT 2>/dev/null || echo "")
 
 if [ -z "$AGENT_ENDPOINT" ] || [ -z "$AGENT_NAME" ]; then
@@ -34,6 +36,39 @@ fi
 
 echo "📡 Agent: ${AGENT_ENDPOINT}"
 echo "📦 RG:    ${RESOURCE_GROUP}"
+echo ""
+
+# ── Step 0: Build & deploy Grubify via ACR (cloud-side, no local Docker) ─────
+echo "🐳 Step 0/5: Building Grubify container image in ACR..."
+if [ -n "$ACR_NAME" ] && [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
+  ACR_LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv 2>/dev/null)
+  IMAGE_TAG="${ACR_LOGIN_SERVER}/grubify-api:latest"
+
+  az acr build \
+    --registry "$ACR_NAME" \
+    --image "grubify-api:latest" \
+    --file "$PROJECT_DIR/src/grubify/GrubifyApi/Dockerfile" \
+    "$PROJECT_DIR/src/grubify/GrubifyApi" \
+    --no-logs 2>/dev/null
+
+  echo "   ✅ Built: ${IMAGE_TAG}"
+
+  # Update the container app to use the new image
+  az containerapp update \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --image "$IMAGE_TAG" \
+    --output none 2>/dev/null
+
+  # Refresh the app URL after update
+  CONTAINER_APP_URL=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null)
+  CONTAINER_APP_URL="https://${CONTAINER_APP_URL}"
+  azd env set CONTAINER_APP_URL "$CONTAINER_APP_URL" 2>/dev/null || true
+
+  echo "   ✅ Deployed: ${CONTAINER_APP_URL}"
+else
+  echo "   ⏭️  Skipped (ACR or source not found — using placeholder image)"
+fi
 echo ""
 
 # ── Helper: Get bearer token ─────────────────────────────────────────────────
@@ -68,7 +103,7 @@ create_subagent() {
 }
 
 # ── Step 1: Upload knowledge base files ──────────────────────────────────────
-echo "📚 Step 1/4: Uploading knowledge base..."
+echo "📚 Step 1/5: Uploading knowledge base..."
 TOKEN=$(get_token)
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -86,7 +121,7 @@ fi
 echo ""
 
 # ── Step 2: Create incident-handler subagent ─────────────────────────────────
-echo "🤖 Step 2/4: Creating incident-handler subagent..."
+echo "🤖 Step 2/5: Creating incident-handler subagent..."
 if [ -n "$GITHUB_PAT_VALUE" ]; then
   echo "   GitHub PAT detected — using full config"
   create_subagent "sre-config/agents/incident-handler-full.yaml" "incident-handler"
@@ -97,7 +132,7 @@ fi
 echo ""
 
 # ── Step 3: Create incident response plan ────────────────────────────────────
-echo "🚨 Step 3/4: Creating incident response plan..."
+echo "🚨 Step 3/5: Creating incident response plan..."
 TOKEN=$(get_token)
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -114,7 +149,7 @@ fi
 echo ""
 
 # ── Step 4: GitHub integration (optional) ────────────────────────────────────
-echo "🔗 Step 4/4: GitHub integration..."
+echo "🔗 Step 4/5: GitHub integration..."
 
 if [ -n "$GITHUB_PAT_VALUE" ]; then
   # Upload triage runbook

@@ -29,7 +29,8 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-// Azure Container Registry (for azd to push built images)
+// Azure Container Registry — used by post-provision hook to build Grubify image
+// via 'az acr build' (cloud-side build, no local Docker needed)
 var acrName = replace('acr${containerAppName}', '-', '')
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: length(acrName) > 50 ? substring(acrName, 0, 50) : acrName
@@ -42,7 +43,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   }
 }
 
-// Grubify Container App (placeholder — azd deploy will update the image)
+// Grubify Container App — starts with placeholder image, updated by post-provision hook
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerAppName
   location: location
@@ -93,16 +94,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       scale: {
         minReplicas: 1
         maxReplicas: 5
-        rules: [
-          {
-            name: 'http-scaling'
-            http: {
-              metadata: {
-                concurrentRequests: '50'
-              }
-            }
-          }
-        ]
       }
     }
   }
