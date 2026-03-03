@@ -383,7 +383,7 @@ Before we break things, try a few prompts to see the agent in action.
     ```
 
 1. [] Watch the agent take action:
-    - [] **Restart**: The agent restarts the container app revision to clear the leaked memory
+    - [] **Mitigate**: The agent may restart the container app revision or scale out replicas to recover
     - [] **Verify**: Checks the app endpoints to confirm it's healthy again
 
 1. [] Once the agent confirms the app is back, verify it yourself:
@@ -462,7 +462,7 @@ Before we break things, try a few prompts to see the agent in action.
     ```
 
 1. [] Watch the agent:
-    - [] **Restart** the container app to clear leaked memory
+    - [] **Mitigate**: The agent may restart the container app or scale out replicas
     - [] **Verify** the endpoints are responding
 
 1. [] Confirm the app is back yourself:
