@@ -30,11 +30,7 @@ If you want to use GitHub, create a **Personal Access Token** first:
 
 **GitHub PAT (optional):** @lab.MaskedTextBox(githubPat)
 
-> [!Alert] If you plan to use the **Workflow Automation** scenario (Part 5), your PAT must have permission to create issues in the repo you'll use for triage. The **`repo`** scope on a Classic token covers this. For fine-grained tokens, select **Contents: Read** and **Issues: Read and Write** on the specific repository.
-
-If you want to use the issue triage scenario, enter the GitHub repo where sample issues should be created:
-
-**Triage Repo (optional, e.g. myuser/my-repo):** @lab.TextBox(triageRepo)
+> [!Alert] If you plan to use the **Workflow Automation** scenario (Part 5), your PAT must have permission to create issues in dm-chelupati/grubify. The **`repo`** scope on a Classic token covers this. For fine-grained tokens, select **Contents: Read** and **Issues: Read and Write** on the repository.
 
 ===
 
@@ -131,13 +127,7 @@ In this section you will clone the lab repository and deploy all Azure resources
     azd env set GITHUB_PAT "@lab.Variable(githubPat)"
     ```
 
-    *(Only if you entered a triage repo above)*:
-
-    ```
-    azd env set TRIAGE_REPO "@lab.Variable(triageRepo)"
-    ```
-
-> [!Hint] If you did **not** enter a GitHub PAT, skip the commands above. The core lab works without GitHub.
+> [!Hint] If you did **not** enter a GitHub PAT, skip the command above. The core lab works without GitHub.
 
 1. [] Deploy everything with a single command:
 
@@ -235,10 +225,10 @@ Before diving into specific scenarios, explore what `azd up` configured for you.
 1. [] In your terminal, check the app is running:
 
     ```
-    curl https://@lab.Variable(grubifyUrl)/health
+    curl https://@lab.Variable(grubifyUrl)/weatherforecast
     ```
 
-    You should see a `200 OK` response.
+    You should see a JSON response with weather data.
 
 ---
 
@@ -371,10 +361,10 @@ Before we break things, try a few prompts to see the agent in action. Start a **
     - [] Timeline of events (when errors started, when remediation was applied)
     - [] Root cause conclusion
 
-1. [] Verify the app has recovered:
+1. [] Verify the app is responding:
 
     ```
-    curl https://@lab.Variable(grubifyUrl)/health
+    curl https://@lab.Variable(grubifyUrl)/weatherforecast
     ```
 
 > [!Knowledge] **What just happened?** The entire investigation was autonomous. The response plan routes all Azure Monitor alerts from the managed resource group to the `incident-handler` subagent. That subagent used KQL queries from the knowledge base runbook, searched memory for patterns, checked metrics, and applied remediation — then created a GitHub issue documenting everything. All without human intervention.
