@@ -28,6 +28,7 @@ CONTAINER_APP_URL=$(azd env get-value CONTAINER_APP_URL 2>/dev/null || echo "")
 CONTAINER_APP_NAME=$(azd env get-value CONTAINER_APP_NAME 2>/dev/null || echo "")
 ACR_NAME=$(azd env get-value AZURE_CONTAINER_REGISTRY_NAME 2>/dev/null || echo "")
 GITHUB_PAT_VALUE=$(azd env get-value GITHUB_PAT 2>/dev/null || echo "")
+export GITHUB_PAT_VALUE
 
 if [ -z "$AGENT_ENDPOINT" ] || [ -z "$AGENT_NAME" ]; then
   echo "❌ ERROR: Could not read agent details from azd environment."
@@ -167,12 +168,18 @@ echo ""
 echo "🔗 Step 4/5: GitHub integration..."
 
 if [ -n "$GITHUB_PAT_VALUE" ]; then
-  # Create GitHub MCP connector via ARM API
+  # Create GitHub MCP connector via ARM API (use temp file to avoid shell escaping issues)
   echo "   Creating GitHub MCP connector..."
+  python3 -c "
+import json, os
+body = {'properties': {'name': 'github-mcp', 'dataConnectorType': 'Mcp', 'dataSource': 'placeholder', 'extendedProperties': {'type': 'http', 'endpoint': 'https://api.githubcopilot.com/mcp/', 'authType': 'BearerToken', 'bearerToken': os.environ.get('GITHUB_PAT_VALUE', '')}, 'identity': 'system'}}
+with open('/tmp/mcp-connector-body.json', 'w') as f: json.dump(body, f)
+"
   az rest --method PUT \
     --url "https://management.azure.com${AGENT_RESOURCE_ID}/DataConnectors/github-mcp?api-version=${API_VERSION}" \
-    --body "{\"properties\":{\"name\":\"github-mcp\",\"dataConnectorType\":\"Mcp\",\"dataSource\":\"placeholder\",\"extendedProperties\":{\"type\":\"http\",\"endpoint\":\"https://api.githubcopilot.com/mcp/\",\"authType\":\"BearerToken\",\"bearerToken\":\"${GITHUB_PAT_VALUE}\"},\"identity\":\"system\"}}" \
+    --body @/tmp/mcp-connector-body.json \
     --output none 2>/dev/null && echo "   ✅ GitHub MCP connector created" || echo "   ⚠️  Could not create GitHub MCP connector"
+  rm -f /tmp/mcp-connector-body.json
 
   # Upload triage runbook
   TOKEN=$(get_token)
