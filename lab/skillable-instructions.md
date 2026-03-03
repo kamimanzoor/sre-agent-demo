@@ -374,7 +374,9 @@ Before we break things, try a few prompts to see the agent in action.
 
 ---
 
-### Step 4: Ask the Agent to Mitigate
+### Step 4 (Optional): Ask the Agent to Mitigate
+
+> [!Knowledge] This step is optional. If you're short on time, skip ahead to **Part 4**. You can always come back to try mitigation later.
 
 1. [] In the same incident thread, type the following in the chat:
 
@@ -393,6 +395,18 @@ Before we break things, try a few prompts to see the agent in action.
     ```
 
     - [] You should get a JSON response — the app is healthy again!
+
+---
+
+### Step 5: Break the App Again (for Part 4)
+
+> [!Alert] Run the break script again to generate fresh error traffic for the Developer persona scenario in Part 4.
+
+```
+./scripts/break-app.sh
+```
+
+This sends another burst of requests to the cart API, triggering new 500 errors and memory pressure that the code-analyzer subagent will investigate.
 
 ===
 
