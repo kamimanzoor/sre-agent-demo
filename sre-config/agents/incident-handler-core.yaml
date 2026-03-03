@@ -15,7 +15,7 @@ spec:
     - search_memory
     - RunAzCliReadCommands
     - RunAzCliWriteCommands
-    - RunAzCliHelpCommands
+    - GetAzCliHelp
     - QueryLogAnalyticsByWorkspaceId
     - QueryAppInsightsByResourceId
     - ExecutePythonCode
