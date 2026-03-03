@@ -23,26 +23,28 @@ Welcome, @lab.User.FirstName! In this lab you will deploy an **Azure SRE Agent**
 
 If you want to use GitHub:
 
-1. Enter your GitHub username below:
-
-**GitHub Username:** @lab.TextBox(githubUser)
-
-2. **Create a GitHub token** — Click this link (it pre-fills the settings):
-
-    [Create token with repo scope](https://github.com/settings/tokens/new?scopes=repo&description=SRE+Agent+Lab)
-
-    Just click **Generate token** at the bottom and paste it below:
-
-**GitHub PAT:** @lab.MaskedTextBox(githubPat)
-
-3. **Fork the Grubify repo** — Open a terminal on the VM and run:
+1. **Fork the Grubify repo** — Open a **Git Bash** terminal and run:
 
     ```
-    echo @lab.Variable(githubPat) | gh auth login --with-token
+    gh auth login
     gh repo fork dm-chelupati/grubify --clone=false
     ```
 
-> [!Alert] The token is used both for forking and for the SRE Agent's GitHub MCP connector to create issues and search code in your forked repo.
+    Follow the browser prompts to sign in. Select **HTTPS** when asked.
+
+2. Enter your GitHub username below:
+
+**GitHub Username:** @lab.TextBox(githubUser)
+
+3. **Create a token for the SRE Agent** — Click this link (it pre-fills the settings):
+
+    [Create token with repo scope](https://github.com/settings/tokens/new?scopes=repo&description=SRE+Agent+Lab)
+
+    Click **Generate token** at the bottom and paste it below:
+
+**GitHub PAT:** @lab.MaskedTextBox(githubPat)
+
+> [!Alert] The PAT is only used by the SRE Agent's GitHub MCP connector — it's how the agent creates issues and searches code in your forked repo.
 
 ===
 
