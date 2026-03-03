@@ -330,13 +330,20 @@ Before we break things, try a few prompts to see the agent in action.
 
 > [!Alert] After running the script, **wait 5-8 minutes** for Azure Monitor to fire the alert and the SRE Agent to pick it up. The memory leak takes a few minutes to build up enough pressure to trigger alerts.
 
+1. [] While waiting, go back to the Grubify frontend app in your browser:
+
+    - [] Try adding an item to your cart
+    - [] Notice the app is **slow, unresponsive, or returning errors**
+    - [] This confirms the app is broken — the memory leak is causing problems
+    - [] Compare this to how smoothly it worked in Step 6!
+
 ---
 
 ### Step 2: Watch the Agent Investigate
 
 1. [] Go back to the SRE Agent portal at <[sre.azure.com](https://sre.azure.com)>.
 
-1. [] Click **Incidents** in the left sidebar.
+1. [] Click **Activities** → **Incidents** in the left sidebar.
 
 1. [] A new incident should appear — the Azure Monitor alert for HTTP 5xx errors on Grubify.
 
