@@ -38,7 +38,7 @@ echo ""
 
 # ── Helper: Get bearer token for SRE Agent dataplane ─────────────────────────
 get_token() {
-  az account get-access-token --resource https://azuresre.dev/.default --query accessToken -o tsv 2>/dev/null
+  az account get-access-token --resource https://azuresre.dev --query accessToken -o tsv 2>/dev/null
 }
 
 # ARM resource ID for the agent

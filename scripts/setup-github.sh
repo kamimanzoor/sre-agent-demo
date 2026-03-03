@@ -36,7 +36,7 @@ AGENT_RESOURCE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_G
 API_VERSION="2025-05-01-preview"
 
 get_token() {
-  az account get-access-token --resource https://azuresre.dev/.default --query accessToken -o tsv 2>/dev/null
+  az account get-access-token --resource https://azuresre.dev --query accessToken -o tsv 2>/dev/null
 }
 
 echo ""
