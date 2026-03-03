@@ -13,6 +13,9 @@ spec:
 
     Always search memory for similar past incidents first.
     Use ExecutePythonCode to plot metrics charts when presenting evidence.
+    Search memory for "incident report template" and follow that format exactly
+    when creating GitHub issues — include structured sections for Summary,
+    Impact, Timeline, Evidence, Root Cause, Remediation, and Action Items.
   handoff_description: Deep root cause analysis using runbooks + source code, creates detailed GitHub issues
   agent_type: Autonomous
   tools:
