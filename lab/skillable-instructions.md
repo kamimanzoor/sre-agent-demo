@@ -435,76 +435,59 @@ Before we break things, try a few prompts to see the agent in action. Start a **
 
 ===
 
-# Part 5: Workflow Automation — GitHub Issue Triage
+# Part 5: Workflow Automation — Issue Triage
 
-> [!Alert] **This section requires a GitHub PAT with `repo` scope** and a GitHub repository where you can create issues. If you did not provide these during setup, skip to **Part 6: Review & Cleanup**.
+> [!Alert] **This section requires a GitHub PAT.** If you did not provide one during setup, skip to **Part 6: Review & Cleanup**.
 
-**Scenario:** You want to automate triaging GitHub issues — classifying them, adding labels, and posting structured comments.
-
-```
-                  Workflow Automation Flow
-                  ========================
-
-  Script creates ──▶ 10 sample issues ──▶ GitHub Repo
-                                              │
-                                              ▼
-  You (chat prompt) ──▶ SRE Agent ──▶ Reads each issue
-                           ├── Classifies (doc/bug/feature)
-                           ├── Checks if enough info provided
-                           ├── Adds labels
-                           └── Posts triage comment
-```
+**Scenario:** The incident-handler and code-analyzer created GitHub issues in `dm-chelupati/grubify` during Parts 3 and 4. Now use the **issue-triager** subagent to triage those issues — classify them, add labels, and post a structured comment. A scheduled task has also been set up to run this automatically every 12 hours.
 
 ---
 
-### Step 1: Create Sample Issues
+### Step 1: Check the Issues
 
-1. [] Run the script to create 10 sample issues in your GitHub repo:
+1. [] Go to [github.com/dm-chelupati/grubify/issues](https://github.com/dm-chelupati/grubify/issues).
 
-    ```
-    export GITHUB_PAT="@lab.Variable(githubPat)"
-    ./scripts/create-sample-issues.sh @lab.Variable(triageRepo)
-    ```
-
-    This creates issues spanning all categories:
-    - 3 Documentation questions
-    - 5 Bug reports (various sub-categories, some with incomplete info)
-    - 2 Feature requests
+1. [] You should see the issues created by the agent in Parts 3 and 4 — currently without triage labels or comments.
 
 ---
 
-### Step 2: Ask the Agent to Triage
+### Step 2: Triage via Chat
 
 1. [] In the SRE Agent portal, start a **new chat**.
 
 1. [] Ask the agent:
 
     ```
-    List all open issues in @lab.Variable(triageRepo) and triage
-    each one following the GitHub Issue Triage Runbook in the
-    knowledge base. For each issue, classify it, add labels, and
-    post a triage comment.
+    Use the issue-triager subagent to triage all open issues in
+    dm-chelupati/grubify. For each issue, classify it, add appropriate
+    labels, and post a triage comment following the triage runbook.
     ```
 
 1. [] Watch the agent:
-    - [] Fetches open issues from the repository
-    - [] Classifies each as Documentation, Bug, or Feature Request
-    - [] For bugs: checks if enough information was provided
-    - [] Adds appropriate labels (documentation, bug, needs-more-info, enhancement, etc.)
-    - [] Posts a structured triage comment starting with "🤖 **SRE Agent Triage Bot**"
+    - [] Lists open issues from the repository
+    - [] Reads each issue and classifies it (Bug, Documentation, Feature Request)
+    - [] Adds labels (bug, needs-more-info, etc.)
+    - [] Posts a triage comment starting with "🤖 **SRE Agent Triage Bot**"
 
 ---
 
 ### Step 3: Verify the Results
 
-1. [] Open your GitHub repository in a browser.
+1. [] Go back to [github.com/dm-chelupati/grubify/issues](https://github.com/dm-chelupati/grubify/issues).
 
-1. [] Click on **Issues** and verify each issue now has:
-    - [] Appropriate **labels** applied
-    - [] A **triage comment** from the agent with status indicator
-    - [] Incomplete bug reports have `needs-more-info` label and a request for details
+1. [] Verify the issues now have:
+    - [] **Labels** applied (bug, needs-more-info, etc.)
+    - [] A **triage comment** from the agent
 
-> [!Knowledge] The agent followed the `github-issue-triage.md` runbook in the knowledge base exactly. This runbook defines classification rules, label assignments, and comment templates. You can customize the runbook to match your team's triage process.
+---
+
+### Step 4: Check the Scheduled Task
+
+1. [] In the SRE Agent portal, go to **Builder → Scheduled tasks**.
+
+1. [] You should see **triage-grubify-issues** running every 12 hours.
+
+> [!Knowledge] The scheduled task was created by `azd up`. It runs the issue-triager subagent automatically twice a day, so new issues get triaged without anyone manually triggering it. You can also click **Run task now** to trigger it immediately.
 
 ===
 

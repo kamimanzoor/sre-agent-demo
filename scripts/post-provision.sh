@@ -226,6 +226,20 @@ with open('/tmp/mcp-connector-body.json', 'w') as f: json.dump(body, f)
   create_subagent "sre-config/agents/code-analyzer.yaml" "code-analyzer"
   create_subagent "sre-config/agents/issue-triager.yaml" "issue-triager"
 
+  # Create scheduled task to triage issues every 12 hours
+  echo "   Creating scheduled task for issue triage..."
+  TOKEN=$(get_token)
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "${AGENT_ENDPOINT}/api/v1/scheduledtasks" \
+    -H "Authorization: Bearer ${TOKEN}" \
+    -H "Content-Type: application/json" \
+    --data-binary '{"name":"triage-grubify-issues","description":"Triage open issues in dm-chelupati/grubify every 12 hours","cronExpression":"0 */12 * * *","agentPrompt":"Use the issue-triager subagent to list all open issues in dm-chelupati/grubify that have not been triaged yet. For each untriaged issue, classify it, add labels, and post a triage comment following the triage runbook in the knowledge base.","agent":"issue-triager"}')
+  if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
+    echo "   ✅ Scheduled task: triage-grubify-issues (every 12h → issue-triager)"
+  else
+    echo "   ⚠️  Scheduled task returned HTTP ${HTTP_CODE}"
+  fi
+
   echo ""
   echo "   GitHub integration: ✅ Configured"
 else
