@@ -148,12 +148,14 @@ az rest --method PATCH \
   --body '{"properties":{"incidentManagementConfiguration":{"type":"AzMonitor","connectionName":"azmonitor"}}}' \
   --output none 2>/dev/null && echo "   ✅ Azure Monitor enabled" || echo "   ⚠️  Could not enable Azure Monitor"
 
-# Delete any default quickstart handler
+# Delete any existing filters (default quickstart + previous runs)
 TOKEN=$(get_token)
 curl -s -o /dev/null -X DELETE "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/quickstart_handler" \
   -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true
+curl -s -o /dev/null -X DELETE "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/grubify-http-errors" \
+  -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true
 
-# Create response plan linking alerts to incident-handler subagent
+# Create response plan linking all alerts to incident-handler subagent
 HTTP_CODE=$(curl -s -o /tmp/response-plan-resp.txt -w "%{http_code}" \
   -X PUT "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/grubify-http-errors" \
   -H "Authorization: Bearer ${TOKEN}" \
