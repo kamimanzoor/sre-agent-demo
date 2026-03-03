@@ -76,5 +76,5 @@ resource sreAgentAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@20
 // Outputs
 output agentName string = sreAgent.name
 output agentId string = sreAgent.id
-output agentEndpoint string = 'https://${agentName}.${location}.azuresre.ai'
+output agentEndpoint string = sreAgent.properties.agentEndpoint
 output agentPortalUrl string = 'https://sre.azure.com'
