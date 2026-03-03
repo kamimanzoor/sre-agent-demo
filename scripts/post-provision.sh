@@ -260,10 +260,8 @@ else
   echo "   Waiting for Azure Monitor to initialize..."
   sleep 10
 
-  # Delete any existing filters (default quickstart + previous runs)
+  # Delete any existing filters (previous runs)
   TOKEN=$(get_token)
-  curl -s -o /dev/null -X DELETE "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/quickstart_handler" \
-    -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true
   curl -s -o /dev/null -X DELETE "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/grubify-http-errors" \
     -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true
 
@@ -286,6 +284,13 @@ for attempt in 1 2 3; do
     sleep 10
   fi
 done
+
+  # Delete the default quickstart handler (auto-created by Azure Monitor platform)
+  TOKEN=$(get_token)
+  curl -s -o /dev/null -X DELETE "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/quickstart_handler" \
+    -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true
+  echo "   🗑️  Removed default quickstart handler"
+
   if [ "$FILTER_CREATED" = "false" ]; then
     echo "   ⚠️  Response plan failed after 3 attempts (set up in portal or run: ./scripts/post-provision.sh --retry)"
   fi
