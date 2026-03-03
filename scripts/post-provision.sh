@@ -103,7 +103,7 @@ create_subagent() {
 }
 
 # ── Step 1: Upload knowledge base files ──────────────────────────────────────
-echo "📚 Step 1/4: Uploading knowledge base..."
+echo "📚 Step 1/5: Uploading knowledge base..."
 TOKEN=$(get_token)
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -121,7 +121,7 @@ fi
 echo ""
 
 # ── Step 2: Create incident-handler subagent ─────────────────────────────────
-echo "🤖 Step 2/4: Creating incident-handler subagent..."
+echo "🤖 Step 2/5: Creating incident-handler subagent..."
 if [ -n "$GITHUB_PAT_VALUE" ]; then
   echo "   GitHub PAT detected — using full config"
   create_subagent "sre-config/agents/incident-handler-full.yaml" "incident-handler"
@@ -131,14 +131,24 @@ else
 fi
 echo ""
 
-# ── Step 3: Create incident response plan (links alert → subagent) ────────────
-echo "🚨 Step 3/4: Creating incident response plan..."
-TOKEN=$(get_token)
+# ── Step 3: Enable Azure Monitor + create response plan ──────────────────────
+echo "🚨 Step 3/5: Enabling Azure Monitor incident platform..."
+SUBSCRIPTION_ID=$(az account show --query id -o tsv 2>/dev/null)
+AGENT_RESOURCE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/agents/${AGENT_NAME}"
+API_VERSION="2025-05-01-preview"
 
-# Delete any default quickstart handler that may conflict
+# Enable Azure Monitor as the incident platform (ARM PATCH)
+az rest --method PATCH \
+  --url "https://management.azure.com${AGENT_RESOURCE_ID}?api-version=${API_VERSION}" \
+  --body '{"properties":{"incidentManagementConfiguration":{"type":"AzMonitor","connectionName":"azmonitor"}}}' \
+  --output none 2>/dev/null && echo "   ✅ Azure Monitor enabled" || echo "   ⚠️  Could not enable Azure Monitor"
+
+# Delete any default quickstart handler
+TOKEN=$(get_token)
 curl -s -o /dev/null -X DELETE "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/quickstart_handler" \
   -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true
 
+# Create response plan linking alerts to incident-handler subagent
 HTTP_CODE=$(curl -s -o /tmp/response-plan-resp.txt -w "%{http_code}" \
   -X PUT "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/grubify-http-errors" \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -146,18 +156,24 @@ HTTP_CODE=$(curl -s -o /tmp/response-plan-resp.txt -w "%{http_code}" \
   --data-binary '{"id":"grubify-http-errors","name":"Grubify HTTP 5xx Errors","priority":"3","titleContains":"5xx","handlingAgent":"incident-handler","agentMode":"autonomous","maxAttempts":3}')
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
-  echo "   ✅ Created: response plan → incident-handler subagent"
+  echo "   ✅ Response plan → incident-handler"
 else
-  echo "   ⚠️  Response plan returned HTTP ${HTTP_CODE} (can be set up in portal instead)"
-  cat /tmp/response-plan-resp.txt 2>/dev/null | head -2
+  echo "   ⚠️  Response plan HTTP ${HTTP_CODE} (set up in portal: Builder → Subagent → Add incident trigger)"
 fi
 rm -f /tmp/response-plan-resp.txt
 echo ""
 
 # ── Step 4: GitHub integration (optional) ────────────────────────────────────
-echo "🔗 Step 4/4: GitHub integration..."
+echo "🔗 Step 4/5: GitHub integration..."
 
 if [ -n "$GITHUB_PAT_VALUE" ]; then
+  # Create GitHub MCP connector via ARM API
+  echo "   Creating GitHub MCP connector..."
+  az rest --method PUT \
+    --url "https://management.azure.com${AGENT_RESOURCE_ID}/DataConnectors/github-mcp?api-version=${API_VERSION}" \
+    --body "{\"properties\":{\"name\":\"github-mcp\",\"dataConnectorType\":\"Mcp\",\"dataSource\":\"placeholder\",\"extendedProperties\":{\"type\":\"http\",\"endpoint\":\"https://api.githubcopilot.com/mcp/\",\"authType\":\"BearerToken\",\"bearerToken\":\"${GITHUB_PAT_VALUE}\"},\"identity\":\"system\"}}" \
+    --output none 2>/dev/null && echo "   ✅ GitHub MCP connector created" || echo "   ⚠️  Could not create GitHub MCP connector"
+
   # Upload triage runbook
   TOKEN=$(get_token)
   curl -s -o /dev/null \
