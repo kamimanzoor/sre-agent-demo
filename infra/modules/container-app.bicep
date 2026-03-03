@@ -46,7 +46,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     template: {
       containers: [
         {
-          image: 'ghcr.io/dm-chelupati/grubify:latest'
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           name: 'grubify'
           resources: {
             cpu: json('0.5')

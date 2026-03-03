@@ -50,7 +50,7 @@ resource sreAgent 'Microsoft.App/agents@2025-05-01-preview' = {
     actionConfiguration: {
       mode: 'autonomous'
       identity: identityId
-      accessLevel: 'Medium'
+      accessLevel: 'Low'
     }
     mcpServers: []
     logConfiguration: {
