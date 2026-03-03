@@ -14,6 +14,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
+# Skip container build/deploy if --skip-build is passed
+SKIP_BUILD="${1:-}"
+
 echo ""
 echo "============================================="
 echo "  SRE Agent Lab — Post-Provision Setup"
@@ -45,8 +48,10 @@ echo "📦 RG:    ${RESOURCE_GROUP}"
 echo ""
 
 # ── Step 0: Build & deploy Grubify via ACR (cloud-side, no local Docker) ─────
-echo "🐳 Step 0/5: Building Grubify container image in ACR..."
-if [ -n "$ACR_NAME" ] && [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
+if [ "$SKIP_BUILD" = "--skip-build" ]; then
+  echo "🐳 Step 0/5: ⏭️  Skipped (--skip-build)"
+elif [ -n "$ACR_NAME" ] && [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
+  echo "🐳 Step 0/5: Building Grubify container images in ACR..."
   ACR_LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv 2>/dev/null)
   IMAGE_TAG="${ACR_LOGIN_SERVER}/grubify-api:latest"
 
