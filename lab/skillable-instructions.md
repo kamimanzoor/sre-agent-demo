@@ -96,6 +96,10 @@ In this section you will clone the lab repository and deploy all Azure resources
 
 ---
 
+### Prerequisites (Windows lab)
+
+> [!Knowledge] If Python is not installed, run in CMD: `winget install Python.Python.3.12` then open a new terminal. The post-provision script requires Python 3.
+
 ### Step 1: Sign in to Azure
 
 1. [] Open a **Git Bash** terminal on the lab VM (search for "Git Bash" in the Start menu, or open VS Code and select Git Bash as the terminal).
@@ -155,6 +159,23 @@ In this section you will clone the lab repository and deploy all Azure resources
     - **Location**: ++eastus2++
 
 > [!Alert] Deployment takes approximately **8-12 minutes**. The command provisions Azure resources via Bicep, deploys the Grubify app, then runs a post-provision script that configures the SRE Agent with knowledge base, subagents, and response plans.
+
+> [!Knowledge] **Windows lab note:** If the post-provision script fails with `'bash' is not recognized` or `Python was not found`, run these commands in a **CMD** window:
+>
+> ```
+> set PATH=%PATH%;C:\Users\LabUser\AppData\Local\Programs\Python\Python312
+> "C:\Program Files\Git\bin\bash.exe" scripts/post-provision.sh
+> ```
+>
+> If the Grubify app still shows the default placeholder page after the script completes, deploy the images manually:
+>
+> ```
+> for /f "tokens=*" %a in ('azd env get-value AZURE_CONTAINER_REGISTRY_NAME') do set ACR=%a
+> for /f "tokens=*" %a in ('azd env get-value CONTAINER_APP_NAME') do set APP=%a
+> for /f "tokens=*" %a in ('azd env get-value FRONTEND_APP_NAME') do set FE=%a
+> az containerapp update --name %APP% --resource-group rg-sre-lab --image %ACR%.azurecr.io/grubify-api:latest
+> az containerapp update --name %FE% --resource-group rg-sre-lab --image %ACR%.azurecr.io/grubify-frontend:latest
+> ```
 
 1. [] Wait for the deployment to complete. You will see a success banner:
 
