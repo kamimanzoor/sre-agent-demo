@@ -111,6 +111,8 @@ See: [Manage Permissions](https://sre.azure.com/docs/tutorials/agent-config/mana
 | GitHub OAuth connector | Code search and issue management (optional) | [Connectors](https://sre.azure.com/docs/concepts/connectors) |
 | code-analyzer subagent | Source code root cause analysis | [Custom Agents](https://sre.azure.com/docs/concepts/subagents) |
 | issue-triager subagent | Automated issue triage from runbook | [Custom Agents](https://sre.azure.com/docs/concepts/subagents) |
+
+> **Note on GitHub tools:** GitHub OAuth tools (code search, issue management) are **built-in native tools**, not MCP tools. Once the GitHub OAuth connector is set up, all agents — including subagents — get access to GitHub tools automatically through global settings. No explicit `mcp_tools` assignment is needed in subagent YAML. This is different from MCP connector tools (Datadog, Splunk, etc.) which require explicit `mcp_tools` assignment.
 | Scheduled Task | Triage customer issues every 12 hours | [Scheduled Tasks](https://sre.azure.com/docs/capabilities/scheduled-tasks) |
 | Code Repo | Agent indexes the Grubify source code | [Deep Context](https://sre.azure.com/docs/concepts/workspace-tools) |
 
