@@ -33,6 +33,18 @@ Deploy an Azure SRE Agent connected to a sample application with a single `azd u
 
 ## Quick Start
 
+### Check prerequisites
+
+Run the prereqs script to verify everything is installed:
+
+```bash
+# macOS/Linux
+bash scripts/prereqs.sh
+
+# Windows (Git Bash or CMD)
+"C:\Program Files\Git\bin\bash.exe" scripts/prereqs.sh
+```
+
 ### macOS / Linux
 
 ```bash
