@@ -36,10 +36,43 @@ SKIP_BUILD=""
 RETRY_MODE=""
 for arg in "$@"; do
   case "$arg" in
-    --skip-build) SKIP_BUILD="true" ;;
-    --retry)      SKIP_BUILD="true"; RETRY_MODE="true" ;;
+    --skip-build)  SKIP_BUILD="true" ;;
+    --retry)       SKIP_BUILD="true"; RETRY_MODE="true" ;;
+    --status)      STATUS_ONLY="true" ;;
+    --build-only)  BUILD_ONLY="true" ;;
   esac
 done
+
+# ── Status-only mode: just show what's deployed ──────────────────────────────
+if [ -n "${STATUS_ONLY:-}" ]; then
+  AGENT_ENDPOINT=$(azd env get-value SRE_AGENT_ENDPOINT 2>/dev/null || echo "")
+  RESOURCE_GROUP=$(azd env get-value AZURE_RESOURCE_GROUP 2>/dev/null || echo "")
+  CONTAINER_APP_NAME=$(azd env get-value CONTAINER_APP_NAME 2>/dev/null || echo "")
+  FRONTEND_APP_NAME=$(azd env get-value FRONTEND_APP_NAME 2>/dev/null || echo "")
+  CONTAINER_APP_URL=$(azd env get-value CONTAINER_APP_URL 2>/dev/null || echo "")
+  FRONTEND_URL=$(azd env get-value FRONTEND_APP_URL 2>/dev/null || echo "")
+  if [ -z "$CONTAINER_APP_URL" ] || [ "$CONTAINER_APP_URL" = "https://" ]; then
+    FQDN=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null | tr -d '\r')
+    [ -n "$FQDN" ] && [ "$FQDN" != "None" ] && CONTAINER_APP_URL="https://${FQDN}"
+  fi
+  if [ -z "$FRONTEND_URL" ] || [ "$FRONTEND_URL" = "https://" ]; then
+    FE_FQDN=$(az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null | tr -d '\r')
+    [ -n "$FE_FQDN" ] && [ "$FE_FQDN" != "None" ] && FRONTEND_URL="https://${FE_FQDN}"
+  fi
+  echo ""
+  echo "============================================="
+  echo "  SRE Agent Lab — Status"
+  echo "============================================="
+  echo ""
+  echo "  🤖 Agent Portal:  https://sre.azure.com"
+  echo "  📡 Agent API:     ${AGENT_ENDPOINT:-not set}"
+  echo "  🌐 Grubify API:   ${CONTAINER_APP_URL:-not deployed}"
+  echo "  🖥️  Grubify UI:    ${FRONTEND_URL:-not deployed}"
+  echo "  📦 Resource Group: ${RESOURCE_GROUP:-not set}"
+  echo ""
+  echo "============================================="
+  exit 0
+fi
 
 echo ""
 echo "============================================="
@@ -193,6 +226,18 @@ else
 fi
 echo ""
 
+# Exit early if --build-only
+if [ -n "${BUILD_ONLY:-}" ]; then
+  echo "============================================="
+  echo "  ✅ Build & Deploy Complete!"
+  echo "============================================="
+  echo ""
+  echo "  🌐 Grubify API:   ${CONTAINER_APP_URL:-check Azure Portal}"
+  echo "  🖥️  Grubify UI:    ${FRONTEND_URL:-check Azure Portal}"
+  echo "============================================="
+  exit 0
+fi
+
 # ── Helper: Get bearer token ─────────────────────────────────────────────────
 get_token() {
   az account get-access-token --resource https://azuresre.dev --query accessToken -o tsv 2>/dev/null
@@ -285,8 +330,8 @@ SUBSCRIPTION_ID=$(az account show --query id -o tsv 2>/dev/null)
 AGENT_RESOURCE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/agents/${AGENT_NAME}"
 API_VERSION="2025-05-01-preview"
 
-if [ -n "$RETRY_MODE" ] && check_response_plan_exists; then
-  echo "   ⏭️  Response plan already exists"
+if check_response_plan_exists; then
+  echo "   ✅ Azure Monitor + response plan already configured — skipping"
 else
   # Enable Azure Monitor as the incident platform (ARM PATCH)
   if az rest --method PATCH \
@@ -561,17 +606,29 @@ except: print('     (could not retrieve)')
 echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────────────
+# Always refresh URLs from Azure
+if [ -z "$CONTAINER_APP_URL" ] || [ "$CONTAINER_APP_URL" = "https://" ]; then
+  FQDN=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null | tr -d '\r')
+  [ -n "$FQDN" ] && [ "$FQDN" != "None" ] && CONTAINER_APP_URL="https://${FQDN}"
+fi
+if [ -z "${FRONTEND_URL:-}" ] || [ "${FRONTEND_URL:-}" = "https://" ]; then
+  FE_FQDN=$(az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null | tr -d '\r')
+  [ -n "$FE_FQDN" ] && [ "$FE_FQDN" != "None" ] && FRONTEND_URL="https://${FE_FQDN}"
+fi
+
 echo "============================================="
 echo "  ✅ SRE Agent Lab Setup Complete!"
 echo "============================================="
 echo ""
-echo "  🤖 Portal:  https://sre.azure.com"
-echo "  🌐 App:     ${CONTAINER_APP_URL}"
-echo "  📦 RG:      ${RESOURCE_GROUP}"
+echo "  🤖 Agent Portal:  https://sre.azure.com"
+echo "  📡 Agent API:     ${AGENT_ENDPOINT}"
+echo "  🌐 Grubify API:   ${CONTAINER_APP_URL:-not deployed}"
+echo "  🖥️  Grubify UI:    ${FRONTEND_URL:-not deployed}"
+echo "  📦 Resource Group: ${RESOURCE_GROUP}"
 echo ""
 echo "  👉 Go to https://sre.azure.com and explore:"
 echo "     1. Builder → Knowledge base (see uploaded runbooks)"
-echo "     2. Builder → Subagent builder (see subagents + tools)"
+echo "     2. Builder → Agent Canvas (see subagents + tools)"
 echo "     3. Builder → Connectors (see GitHub OAuth)"
 echo "     4. Settings → Incident platform (Azure Monitor)"
 echo ""
