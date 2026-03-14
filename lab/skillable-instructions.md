@@ -57,7 +57,7 @@ In this section you will clone the lab repository and deploy all Azure resources
 - **Knowledge Base** — HTTP error runbooks and app architecture documentation
 - **Alert Rules** — Azure Monitor alerts for HTTP 5xx errors and error log spikes
 - **Subagent** — Incident handler with search memory and log analysis tools
-- *(If GitHub PAT provided)* GitHub OAuth connector, code-analyzer, and issue-triager subagents
+- *(If GitHub configured)* GitHub OAuth connector, code-analyzer, and issue-triager subagents
 
 > [!Knowledge] Architecture Overview
 >
@@ -641,7 +641,7 @@ Everything below was configured automatically when you ran `azd up`:
 - [] Knowledge base files uploaded (post-provision script)
 - [] Incident handler subagent created (post-provision script)
 - [] Incident response plan created (post-provision script)
-- [] *(If GitHub PAT)* GitHub OAuth connector, code-analyzer, issue-triager, sample customer issues (post-provision script)
+- [] *(If GitHub configured)* GitHub OAuth connector, code-analyzer, issue-triager, sample customer issues (post-provision script)
 
 ---
 
