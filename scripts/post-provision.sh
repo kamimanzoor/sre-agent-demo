@@ -6,7 +6,7 @@
 #   - Uploads knowledge base files
 #   - Creates subagents via dataplane v2 API
 #   - Creates incident response plan
-#   - (Optional) GitHub MCP + additional subagents
+#   - GitHub OAuth connector + subagents
 # =============================================================================
 set -uo pipefail
 
@@ -17,8 +17,15 @@ elif command -v python &>/dev/null; then
   PYTHON=python
 else
   echo "❌ ERROR: Python not found. Install Python 3."
+  echo "   Windows: winget install Python.Python.3.12"
+  echo "   Then disable App execution aliases for python.exe in Settings."
   exit 1
 fi
+
+# Temp directory — works on both Linux (/tmp) and Windows (TEMP/TMPDIR)
+TEMP_DIR="${TMPDIR:-${TEMP:-/tmp}}"
+# On Windows Git Bash, TEMP may have backslashes — convert to forward slashes
+TEMP_DIR="${TEMP_DIR//\\//}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -48,16 +55,10 @@ CONTAINER_APP_URL=$(azd env get-value CONTAINER_APP_URL 2>/dev/null || echo "")
 CONTAINER_APP_NAME=$(azd env get-value CONTAINER_APP_NAME 2>/dev/null || echo "")
 FRONTEND_APP_NAME=$(azd env get-value FRONTEND_APP_NAME 2>/dev/null || echo "")
 ACR_NAME=$(azd env get-value AZURE_CONTAINER_REGISTRY_NAME 2>/dev/null || echo "")
-GITHUB_PAT_VALUE=$(azd env get-value GITHUB_PAT 2>/dev/null || echo "")
 GITHUB_USER=$(azd env get-value GITHUB_USER 2>/dev/null || echo "")
-# azd env get-value outputs error text when key is missing — clean it up
-if echo "$GITHUB_PAT_VALUE" | grep -q "ERROR\|not found"; then
-  GITHUB_PAT_VALUE=""
-fi
 if echo "$GITHUB_USER" | grep -q "ERROR\|not found"; then
   GITHUB_USER=""
 fi
-export GITHUB_PAT_VALUE
 # Build the repo name from username (defaults to dm-chelupati if not set)
 export GITHUB_REPO="${GITHUB_USER:+${GITHUB_USER}/grubify}"
 GITHUB_REPO="${GITHUB_REPO:-dm-chelupati/grubify}"
@@ -72,21 +73,35 @@ echo "📡 Agent: ${AGENT_ENDPOINT}"
 echo "📦 RG:    ${RESOURCE_GROUP}"
 echo ""
 
-# ── Step 0: Build & deploy Grubify via ACR (cloud-side, no local Docker) ─────
+# ── Step 0: Build & deploy Grubify via ACR (cloud-side, no local clone needed) ─
+GRUBIFY_REPO="https://github.com/dm-chelupati/grubify.git"
+
 if [ -n "$SKIP_BUILD" ]; then
   echo "🐳 Step 0/5: ⏭️  Skipped (--skip-build or --retry)"
-elif [ -n "$ACR_NAME" ] && [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
+elif [ -n "$ACR_NAME" ]; then
   echo "🐳 Step 0/5: Building Grubify container images in ACR..."
   ACR_LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv 2>/dev/null)
   IMAGE_TAG="${ACR_LOGIN_SERVER}/grubify-api:latest"
 
-  echo "   Building API image in ACR (this takes ~1 min)..."
-  az acr build \
-    --registry "$ACR_NAME" \
-    --image "grubify-api:latest" \
-    --file "$PROJECT_DIR/src/grubify/GrubifyApi/Dockerfile" \
-    "$PROJECT_DIR/src/grubify/GrubifyApi" \
-    --no-logs --output none 2>/dev/null
+  # Build from remote GitHub repo — no local clone needed
+  echo "   Building API image from GitHub repo (this takes ~1-2 min)..."
+  if [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
+    # Use local source if submodule is cloned
+    az acr build \
+      --registry "$ACR_NAME" \
+      --image "grubify-api:latest" \
+      --file "$PROJECT_DIR/src/grubify/GrubifyApi/Dockerfile" \
+      "$PROJECT_DIR/src/grubify/GrubifyApi" \
+      --no-logs --output none 2>/dev/null
+  else
+    # Build directly from GitHub — no local clone needed
+    az acr build \
+      --registry "$ACR_NAME" \
+      --image "grubify-api:latest" \
+      --file "GrubifyApi/Dockerfile" \
+      "${GRUBIFY_REPO}#main:GrubifyApi" \
+      --no-logs --output none 2>/dev/null
+  fi
 
   echo "   ✅ Built: ${IMAGE_TAG}"
 
@@ -106,41 +121,47 @@ elif [ -n "$ACR_NAME" ] && [ -d "$PROJECT_DIR/src/grubify/GrubifyApi" ]; then
   echo "   ✅ API deployed: ${CONTAINER_APP_URL}"
 
   # Build and deploy frontend
+  echo "   Building frontend image (this takes ~2-3 min)..."
+  FRONTEND_IMAGE="${ACR_LOGIN_SERVER}/grubify-frontend:latest"
   if [ -d "$PROJECT_DIR/src/grubify/grubify-frontend" ]; then
-    FRONTEND_IMAGE="${ACR_LOGIN_SERVER}/grubify-frontend:latest"
-
-    echo "   Building frontend image in ACR (this takes ~2-3 min)..."
     az acr build \
       --registry "$ACR_NAME" \
       --image "grubify-frontend:latest" \
       --file "$PROJECT_DIR/src/grubify/grubify-frontend/Dockerfile" \
       "$PROJECT_DIR/src/grubify/grubify-frontend" \
       --no-logs --output none 2>/dev/null
-
-    echo "   ✅ Frontend built"
-    echo "   Deploying frontend to container app..."
-    az containerapp update \
-      --name "$FRONTEND_APP_NAME" \
-      --resource-group "$RESOURCE_GROUP" \
-      --image "$FRONTEND_IMAGE" \
-      --set-env-vars "REACT_APP_API_BASE_URL=https://${CONTAINER_APP_URL#https://}/api" \
-      --output none 2>/dev/null
-
-    FRONTEND_URL=$(az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null)
-    FRONTEND_URL="https://${FRONTEND_URL}"
-    azd env set FRONTEND_APP_URL "$FRONTEND_URL" 2>/dev/null || true
-
-    echo "   ✅ Frontend deployed: ${FRONTEND_URL}"
-
-    # Set CORS on the API to allow requests from the frontend
-    echo "   Configuring CORS on API..."
-    az containerapp update \
-      --name "$CONTAINER_APP_NAME" \
-      --resource-group "$RESOURCE_GROUP" \
-      --set-env-vars "AllowedOrigins__0=${FRONTEND_URL}" \
-      --output none 2>/dev/null
-    echo "   ✅ CORS configured"
+  else
+    az acr build \
+      --registry "$ACR_NAME" \
+      --image "grubify-frontend:latest" \
+      --file "grubify-frontend/Dockerfile" \
+      "${GRUBIFY_REPO}#main:grubify-frontend" \
+      --no-logs --output none 2>/dev/null
   fi
+
+  echo "   ✅ Frontend built"
+  echo "   Deploying frontend to container app..."
+  az containerapp update \
+    --name "$FRONTEND_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --image "$FRONTEND_IMAGE" \
+    --set-env-vars "REACT_APP_API_BASE_URL=https://${CONTAINER_APP_URL#https://}/api" \
+    --output none 2>/dev/null
+
+  FRONTEND_URL=$(az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null)
+  FRONTEND_URL="https://${FRONTEND_URL}"
+  azd env set FRONTEND_APP_URL "$FRONTEND_URL" 2>/dev/null || true
+
+  echo "   ✅ Frontend deployed: ${FRONTEND_URL}"
+
+  # Set CORS on the API to allow requests from the frontend
+  echo "   Configuring CORS on API..."
+  az containerapp update \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --set-env-vars "AllowedOrigins__0=${FRONTEND_URL}" \
+    --output none 2>/dev/null
+  echo "   ✅ CORS configured"
 else
   echo "   ⏭️  Skipped (ACR or source not found — using placeholder image)"
 fi
@@ -159,22 +180,22 @@ create_subagent() {
   token=$(get_token)
 
   # Convert YAML spec to API JSON using helper script
-  $PYTHON "$SCRIPT_DIR/yaml-to-api-json.py" "$yaml_file" "/tmp/${agent_name}-body.json" > /dev/null 2>&1
+  $PYTHON "$SCRIPT_DIR/yaml-to-api-json.py" "$yaml_file" "${TEMP_DIR}/${agent_name}-body.json" > /dev/null 2>&1
 
   local http_code
-  http_code=$(curl -s -o /tmp/${agent_name}-resp.txt -w "%{http_code}" \
+  http_code=$(curl -s -o ${TEMP_DIR}/${agent_name}-resp.txt -w "%{http_code}" \
     -X PUT "${AGENT_ENDPOINT}/api/v2/extendedAgent/agents/${agent_name}" \
     -H "Authorization: Bearer ${token}" \
     -H "Content-Type: application/json" \
-    --data-binary @"/tmp/${agent_name}-body.json")
+    --data-binary @"${TEMP_DIR}/${agent_name}-body.json")
 
   if [ "$http_code" = "200" ] || [ "$http_code" = "201" ] || [ "$http_code" = "202" ] || [ "$http_code" = "204" ]; then
     echo "   ✅ Created: ${agent_name}"
   else
     echo "   ⚠️  ${agent_name} returned HTTP ${http_code}"
-    cat "/tmp/${agent_name}-resp.txt" 2>/dev/null | head -3
+    cat "${TEMP_DIR}/${agent_name}-resp.txt" 2>/dev/null | head -3
   fi
-  rm -f "/tmp/${agent_name}-body.json" "/tmp/${agent_name}-resp.txt"
+  rm -f "${TEMP_DIR}/${agent_name}-body.json" "${TEMP_DIR}/${agent_name}-resp.txt"
 }
 
 # ── Helper: Check if something exists (for --retry mode) ─────────────────────
@@ -228,13 +249,8 @@ echo ""
 
 # ── Step 2: Create incident-handler subagent ─────────────────────────────────
 echo "🤖 Step 2/5: Creating/updating incident-handler subagent..."
-if [ -n "$GITHUB_PAT_VALUE" ]; then
-  echo "   GitHub PAT detected — using full config"
-  create_subagent "sre-config/agents/incident-handler-full.yaml" "incident-handler"
-else
-  echo "   No GitHub PAT — using core config"
-  create_subagent "sre-config/agents/incident-handler-core.yaml" "incident-handler"
-fi
+echo "   Using full config with GitHub tools"
+create_subagent "sre-config/agents/incident-handler-full.yaml" "incident-handler"
 echo ""
 
 # ── Step 3: Enable Azure Monitor + create response plan ──────────────────────
@@ -269,7 +285,7 @@ else
 FILTER_CREATED=false
 for attempt in 1 2 3; do
   TOKEN=$(get_token)
-  HTTP_CODE=$(curl -s -o /tmp/response-plan-resp.txt -w "%{http_code}" \
+  HTTP_CODE=$(curl -s -o ${TEMP_DIR}/response-plan-resp.txt -w "%{http_code}" \
     -X PUT "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filters/grubify-http-errors" \
     -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
@@ -288,7 +304,7 @@ done
   if [ "$FILTER_CREATED" = "false" ]; then
     echo "   ⚠️  Response plan failed after 3 attempts (set up in portal or run: ./scripts/post-provision.sh --retry)"
   fi
-  rm -f /tmp/response-plan-resp.txt
+  rm -f ${TEMP_DIR}/response-plan-resp.txt
 fi
 
 # Always delete the default quickstart handler (auto-created by Azure Monitor platform)
@@ -298,56 +314,77 @@ curl -s -o /dev/null -X DELETE "${AGENT_ENDPOINT}/api/v1/incidentPlayground/filt
 
 echo ""
 
-# ── Step 4: GitHub integration (optional) ────────────────────────────────────
+# ── Step 4: GitHub integration ───────────────────────────────────────────────
 echo "🔗 Step 4/5: GitHub integration..."
 
-if [ -n "$GITHUB_PAT_VALUE" ]; then
-  # Create GitHub MCP connector via ARM API (use temp file to avoid shell escaping issues)
-  echo "   Creating GitHub MCP connector..."
-  echo "   PAT length: ${#GITHUB_PAT_VALUE}"
-  $PYTHON -c "
-import json, os
-pat = os.environ.get('GITHUB_PAT_VALUE', '')
-print(f'   Python PAT length: {len(pat)}')
-body = {'properties': {'name': 'github-mcp', 'dataConnectorType': 'Mcp', 'dataSource': 'placeholder', 'extendedProperties': {'type': 'http', 'endpoint': 'https://api.githubcopilot.com/mcp/', 'authType': 'BearerToken', 'bearerToken': pat}, 'identity': 'system'}}
-with open('/tmp/mcp-connector-body.json', 'w') as f: json.dump(body, f)
-"
-  if az rest --method PUT \
-    --url "https://management.azure.com${AGENT_RESOURCE_ID}/DataConnectors/github-mcp?api-version=${API_VERSION}" \
-    --body @/tmp/mcp-connector-body.json \
-    --output none 2>&1; then
-    echo "   ✅ GitHub MCP connector created"
-  else
-    echo "   ⚠️  Could not create GitHub MCP connector (check PAT and permissions)"
-  fi
-  rm -f /tmp/mcp-connector-body.json
+# Create GitHub OAuth connector via data plane API (no PAT needed)
+echo "   Creating GitHub OAuth connector..."
+TOKEN=$(get_token)
+GITHUB_EXISTS=$(curl -s "${AGENT_ENDPOINT}/api/v2/extendedAgent/connectors/github" \
+  -H "Authorization: Bearer ${TOKEN}" 2>/dev/null | $PYTHON -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    print('yes' if d.get('name')=='github' else 'no')
+except: print('no')
+" 2>/dev/null)
 
-  # Upload triage runbook
-  TOKEN=$(get_token)
-  curl -s -o /dev/null \
-    -X POST "${AGENT_ENDPOINT}/api/v1/AgentMemory/upload" \
+if [ "$GITHUB_EXISTS" = "yes" ]; then
+  echo "   ✅ GitHub OAuth connector already exists"
+else
+  RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+    -X PUT "${AGENT_ENDPOINT}/api/v2/extendedAgent/connectors/github" \
     -H "Authorization: Bearer ${TOKEN}" \
-    -F "triggerIndexing=true" \
-    -F "files=@./knowledge-base/github-issue-triage.md;type=text/plain"
-  echo "   ✅ Uploaded: github-issue-triage.md"
+    -H "Content-Type: application/json" \
+    -d '{"name":"github","type":"AgentConnector","properties":{"dataConnectorType":"GitHubOAuth","dataSource":"github-oauth"}}')
+  if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ]; then
+    echo "   ✅ GitHub OAuth connector created"
+  else
+    echo "   ⚠️  GitHub connector returned HTTP ${RESULT}"
+  fi
+fi
 
-  # Create sample customer issues for triage demo
-  echo "   Creating sample customer issues..."
-  export GITHUB_REPO GITHUB_PAT_VALUE
-  export GITHUB_PAT="${GITHUB_PAT_VALUE}"
-  bash ./scripts/create-sample-issues.sh "${GITHUB_REPO}" 2>/dev/null || echo "   ⚠️  Could not create sample issues"
+# Get OAuth login URL for user to authorize
+TOKEN=$(get_token)
+OAUTH_URL=$(curl -s "${AGENT_ENDPOINT}/api/v1/github/config" \
+  -H "Authorization: Bearer ${TOKEN}" 2>/dev/null | $PYTHON -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('oAuthUrl', '') or d.get('OAuthUrl', '') or '')
+except: print('')
+" 2>/dev/null)
 
-  # Create additional subagents
-  create_subagent "sre-config/agents/code-analyzer.yaml" "code-analyzer"
-  create_subagent "sre-config/agents/issue-triager.yaml" "issue-triager"
+# Add code repo
+echo "   Adding ${GITHUB_REPO} code repository..."
+TOKEN=$(get_token)
+REPO_NAME=$(echo "$GITHUB_REPO" | cut -d'/' -f2)
+curl -s -o /dev/null -w "" \
+  -X PUT "${AGENT_ENDPOINT}/api/v2/repos/${REPO_NAME}" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"${REPO_NAME}\",\"type\":\"CodeRepo\",\"properties\":{\"url\":\"https://github.com/${GITHUB_REPO}\"}}"
+echo "   ✅ Code repo: ${GITHUB_REPO}"
 
-  # Create scheduled task to triage issues every 12 hours
-  echo "   Creating scheduled task for issue triage..."
-  TOKEN=$(get_token)
+# Upload triage runbook
+TOKEN=$(get_token)
+curl -s -o /dev/null \
+  -X POST "${AGENT_ENDPOINT}/api/v1/AgentMemory/upload" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -F "triggerIndexing=true" \
+  -F "files=@./knowledge-base/github-issue-triage.md;type=text/plain"
+echo "   ✅ Uploaded: github-issue-triage.md"
 
-  # Delete any existing tasks with the same name to avoid duplicates
-  EXISTING_TASKS=$(curl -s "${AGENT_ENDPOINT}/api/v1/scheduledtasks" -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || echo "[]")
-  echo "$EXISTING_TASKS" | $PYTHON -c "
+# Create additional subagents
+create_subagent "sre-config/agents/code-analyzer.yaml" "code-analyzer"
+create_subagent "sre-config/agents/issue-triager.yaml" "issue-triager"
+
+# Create scheduled task to triage issues every 12 hours
+echo "   Creating scheduled task for issue triage..."
+TOKEN=$(get_token)
+
+EXISTING_TASKS=$(curl -s "${AGENT_ENDPOINT}/api/v1/scheduledtasks" -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || echo "[]")
+echo "$EXISTING_TASKS" | $PYTHON -c "
 import sys,json
 try:
     tasks=json.load(sys.stdin)
@@ -361,29 +398,34 @@ except: pass
     fi
   done
 
-  $PYTHON -c "
+$PYTHON -c "
 import json, os
 repo = os.environ.get('GITHUB_REPO', 'dm-chelupati/grubify')
 body = {'name':'triage-grubify-issues','description':f'Triage customer issues in {repo} every 12 hours','cronExpression':'0 */12 * * *','agentPrompt':f'Use the issue-triager subagent to list all open issues in {repo} that have [Customer Issue] in the title and have not been triaged yet. For each untriaged customer issue, classify it, add labels, and post a triage comment following the triage runbook in the knowledge base.','agent':'issue-triager'}
-with open('/tmp/scheduled-task-body.json', 'w') as f: json.dump(body, f)
+with open('${TEMP_DIR}/scheduled-task-body.json', 'w') as f: json.dump(body, f)
 "
-  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-    -X POST "${AGENT_ENDPOINT}/api/v1/scheduledtasks" \
-    -H "Authorization: Bearer ${TOKEN}" \
-    -H "Content-Type: application/json" \
-    --data-binary @/tmp/scheduled-task-body.json)
-  rm -f /tmp/scheduled-task-body.json
-  if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
-    echo "   ✅ Scheduled task: triage-grubify-issues (every 12h → issue-triager)"
-  else
-    echo "   ⚠️  Scheduled task returned HTTP ${HTTP_CODE}"
-  fi
-
-  echo ""
-  echo "   GitHub integration: ✅ Configured"
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST "${AGENT_ENDPOINT}/api/v1/scheduledtasks" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data-binary @${TEMP_DIR}/scheduled-task-body.json)
+rm -f ${TEMP_DIR}/scheduled-task-body.json
+if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
+  echo "   ✅ Scheduled task: triage-grubify-issues (every 12h → issue-triager)"
 else
-  echo "   ⏭️  No GITHUB_PAT — skipping"
-  echo "   To add later: GITHUB_PAT=<pat> ./scripts/setup-github.sh"
+  echo "   ⚠️  Scheduled task returned HTTP ${HTTP_CODE}"
+fi
+
+echo ""
+echo "   GitHub integration: ✅ Configured"
+
+if [ -n "$OAUTH_URL" ]; then
+  echo ""
+  echo "   ┌──────────────────────────────────────────────────────────┐"
+  echo "   │  Sign in to GitHub to authorize the SRE Agent:          │"
+  echo "   │  ${OAUTH_URL}"
+  echo "   │  Open this URL in your browser and click 'Authorize'    │"
+  echo "   └──────────────────────────────────────────────────────────┘"
 fi
 echo ""
 
@@ -437,7 +479,7 @@ try:
     for c in d:
         state='✅' if c.get('state')=='Succeeded' else '⏳ '+str(c.get('state',''))
         print(f'     {state} {c[\"name\"]}')
-    if not d: print('     (none — GitHub PAT not provided or connector pending)')
+    if not d: print('     (none — connector pending)')
 except: print('     (could not retrieve)')
 " 2>/dev/null
 echo ""
@@ -504,7 +546,7 @@ echo ""
 echo "  👉 Go to https://sre.azure.com and explore:"
 echo "     1. Builder → Knowledge base (see uploaded runbooks)"
 echo "     2. Builder → Subagent builder (see subagents + tools)"
-echo "     3. Builder → Connectors (see GitHub MCP)"
+echo "     3. Builder → Connectors (see GitHub OAuth)"
 echo "     4. Settings → Incident platform (Azure Monitor)"
 echo ""
 echo "  Then run: ./scripts/break-app.sh"

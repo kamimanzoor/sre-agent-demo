@@ -19,7 +19,7 @@ Welcome, @lab.User.FirstName! In this lab you will deploy an **Azure SRE Agent**
 
 ### Optional: GitHub Integration
 
-> [!Note] The **core lab** (IT Persona — incident detection, log analysis, remediation) works **without GitHub**. If you have a GitHub account, entering your PAT and username below unlocks two bonus scenarios: source code root cause analysis and automated issue triage.
+> [!Note] The **core lab** (IT Persona — incident detection, log analysis, remediation) works **without GitHub**. If you have a GitHub account, signing in via OAuth during setup unlocks two bonus scenarios: source code root cause analysis and automated issue triage.
 
 If you want to use GitHub:
 
@@ -42,9 +42,9 @@ If you want to use GitHub:
 
     Click **Generate token** at the bottom and paste it below:
 
-**GitHub PAT:** @lab.MaskedTextBox(githubPat)
+*> GitHub: Sign in via the OAuth URL printed after deployment.
 
-> [!Alert] The PAT is only used by the SRE Agent's GitHub MCP connector — it's how the agent creates issues and searches code in your forked repo.
+> [!Alert] GitHub OAuth uses browser sign-in — no tokens to manage. The agent accesses your repos through the OAuth connection.
 
 ===
 
@@ -57,7 +57,7 @@ In this section you will clone the lab repository and deploy all Azure resources
 - **Knowledge Base** — HTTP error runbooks and app architecture documentation
 - **Alert Rules** — Azure Monitor alerts for HTTP 5xx errors and error log spikes
 - **Subagent** — Incident handler with search memory and log analysis tools
-- *(If GitHub PAT provided)* GitHub MCP connector, code-analyzer, and issue-triager subagents
+- *(If GitHub configured)* GitHub OAuth connector, code-analyzer, and issue-triager subagents
 
 > [!Knowledge] Architecture Overview
 >
@@ -88,13 +88,56 @@ In this section you will clone the lab repository and deploy all Azure resources
 > │                                │  └─────────────────────┘  │ │
 > │                                │                           │ │
 > │                                │  ┌─────────────────────┐  │ │
-> │                                │  │  GitHub MCP (opt.)  ─┼──┼─▶ GitHub
+> │                                │  │  GitHub OAuth (opt.)  ─┼──┼─▶ GitHub
 > │                                │  └─────────────────────┘  │ │
 > │                                └───────────────────────────┘ │
 > └──────────────────────────────────────────────────────────────┘
 > ```
 
 ---
+
+### Prerequisites (Windows lab)
+
+> [!Knowledge] **Required before starting:**
+>
+> 1. **Install Python 3** (needed by the setup script):
+>    ```
+>    winget install Python.Python.3.12 --accept-source-agreements --accept-package-agreements
+>    ```
+> 2. **Disable Windows Store Python aliases** — Open **Settings → Apps → Advanced app settings → App execution aliases** → turn OFF `python.exe` and `python3.exe`
+> 3. **Register the resource provider:**
+>    ```
+>    az provider register -n Microsoft.App --wait
+>    ```
+> 4. **Verify** (open a NEW CMD window):
+>    ```
+>    python --version
+>    git --version
+>    az --version
+>    azd version
+>    ```
+
+### What gets deployed
+
+> [!Knowledge] The deployment creates these resources and configurations:
+>
+> **Azure Resources** ([learn more](https://sre.azure.com/docs/get-started/create-and-setup)):
+> - SRE Agent with managed identity
+> - Grubify sample app on Container Apps
+> - Log Analytics + App Insights for monitoring
+> - Azure Monitor alert rules for HTTP 5xx errors
+> - Container Registry for app images
+>
+> **RBAC Roles** ([learn more](https://sre.azure.com/docs/tutorials/agent-config/manage-permissions)):
+> - SRE Agent Administrator on the agent resource
+> - Reader + Monitoring Reader + Log Analytics Reader on the resource group
+>
+> **Agent Configuration** (via post-provision script):
+> - Knowledge base files ([Memory & Knowledge](https://sre.azure.com/docs/concepts/memory))
+> - incident-handler subagent ([Custom Agents](https://sre.azure.com/docs/concepts/subagents))
+> - Azure Monitor incident platform ([Incident Platforms](https://sre.azure.com/docs/concepts/incident-platforms))
+> - Response plan for HTTP 500 alerts ([Response Plans](https://sre.azure.com/docs/capabilities/incident-response-plans))
+> - *(Optional)* GitHub OAuth connector + code-analyzer + issue-triager ([Connectors](https://sre.azure.com/docs/concepts/connectors))
 
 ### Step 1: Sign in to Azure
 
@@ -138,7 +181,7 @@ In this section you will clone the lab repository and deploy all Azure resources
 1. [] *(Only if you entered GitHub details above)* Set GitHub variables:
 
     ```
-    azd env set GITHUB_PAT "@lab.Variable(githubPat)"
+    # GitHub: sign in via OAuth URL after deployment (no PAT needed)
     azd env set GITHUB_USER "@lab.Variable(githubUser)"
     ```
 
@@ -155,6 +198,23 @@ In this section you will clone the lab repository and deploy all Azure resources
     - **Location**: ++eastus2++
 
 > [!Alert] Deployment takes approximately **8-12 minutes**. The command provisions Azure resources via Bicep, deploys the Grubify app, then runs a post-provision script that configures the SRE Agent with knowledge base, subagents, and response plans.
+
+> [!Knowledge] **Windows lab note:** If the post-provision script fails with `'bash' is not recognized` or `Python was not found`, run these commands in a **CMD** window:
+>
+> ```
+> set PATH=%PATH%;C:\Users\LabUser\AppData\Local\Programs\Python\Python312
+> "C:\Program Files\Git\bin\bash.exe" scripts/post-provision.sh
+> ```
+>
+> If the Grubify app still shows the default placeholder page after the script completes, deploy the images manually:
+>
+> ```
+> for /f "tokens=*" %a in ('azd env get-value AZURE_CONTAINER_REGISTRY_NAME') do set ACR=%a
+> for /f "tokens=*" %a in ('azd env get-value CONTAINER_APP_NAME') do set APP=%a
+> for /f "tokens=*" %a in ('azd env get-value FRONTEND_APP_NAME') do set FE=%a
+> az containerapp update --name %APP% --resource-group rg-sre-lab --image %ACR%.azurecr.io/grubify-api:latest
+> az containerapp update --name %FE% --resource-group rg-sre-lab --image %ACR%.azurecr.io/grubify-frontend:latest
+> ```
 
 1. [] Wait for the deployment to complete. You will see a success banner:
 
@@ -213,11 +273,11 @@ Before diving into specific scenarios, explore what `azd up` configured for you.
 
 1. [] You should see the **incident-handler** subagent with:
     - **Autonomy:** Autonomous
-    - **Tools:** SearchMemory, RunAzCliReadCommands, QueryLogAnalyticsByWorkspaceId (+ github-mcp/* if GitHub was configured)
+    - **Tools:** SearchMemory, RunAzCliReadCommands, QueryLogAnalyticsByWorkspaceId (+ github/* if GitHub was configured)
 
 1. [] Click on **incident-handler** to see its system prompt and tool assignments.
 
-> [!Knowledge] If you provided a GitHub PAT, you'll also see **code-analyzer** and **issue-triager** subagents on the canvas.
+> [!Knowledge] If you set up GitHub OAuth, you'll also see **code-analyzer** and **issue-triager** subagents on the canvas.
 
 ---
 
@@ -225,12 +285,12 @@ Before diving into specific scenarios, explore what `azd up` configured for you.
 
 1. [] Click **Builder** → **Connectors**.
 
-1. [] If you provided a GitHub PAT, you should see **github-mcp** with a green **Connected** status.
+1. [] If you set up GitHub OAuth, you should see **github** with a green **Connected** status.
 
-> [!Hint] If you didn't provide a GitHub PAT and want to add GitHub now, run:
+> [!Hint] If you didn't set up GitHub OAuth and want to add it now, run:
 >
 > ```
-> export GITHUB_PAT=<your-pat>
+> ./scripts/setup-github.sh
 > ./scripts/setup-github.sh
 > ```
 
@@ -426,7 +486,7 @@ This sends another burst of requests to the cart API, triggering new 500 errors 
 
 # Part 4: Developer Persona — Deep Root Cause with Source Code
 
-> [!Alert] **This section requires a GitHub PAT.** If you did not provide one during setup, skip to **Part 6: Review & Cleanup**. You can also add GitHub now by running: `export GITHUB_PAT=<pat> && ./scripts/setup-github.sh`
+> [!Alert] **This section requires GitHub OAuth.** If you did not set up GitHub during setup, skip to **Part 6: Review & Cleanup**. You can also add GitHub now by running: `./scripts/setup-github.sh`
 
 **Scenario:** The incident-handler subagent (Part 3) created a GitHub issue using only log analysis. Now use the **code-analyzer** subagent to create a RICHER issue that includes source code references. Compare the two issues to see the value of connecting source code.
 
@@ -504,7 +564,7 @@ This sends another burst of requests to the cart API, triggering new 500 errors 
 
 # Part 5: Workflow Automation — Issue Triage
 
-> [!Alert] **This section requires a GitHub PAT.** If you did not provide one during setup, skip to **Part 6: Review & Cleanup**.
+> [!Alert] **This section requires GitHub OAuth.** If you did not set up GitHub during setup, skip to **Part 6: Review & Cleanup**.
 
 **Scenario:** During setup, `azd up` created 5 sample customer-reported issues in `@lab.Variable(githubUser)/grubify` — these simulate real user complaints like "App crashes when adding items to cart" and "Can't place an order." Now use the **issue-triager** subagent to triage those issues — classify them, add labels, and post a structured comment. A scheduled task runs this automatically every 12 hours.
 
@@ -564,8 +624,8 @@ This sends another burst of requests to the cart API, triggering new 500 errors 
 | Persona | What the Agent Did | Key Capabilities |
 |:--------|:-------------------|:-----------------|
 | **IT Operations** | Detected alert → investigated logs + KB → remediated → summarized | Azure Monitor, Knowledge base, Search memory, Autonomous mode |
-| **Developer** | Searched source code → correlated logs to code → suggested fixes | GitHub MCP, Code search, file:line references |
-| **Workflow Automation** | Triaged issues → classified → labeled → commented | GitHub MCP tools, Runbook-driven automation |
+| **Developer** | Searched source code → correlated logs to code → suggested fixes | GitHub OAuth, Code search, file:line references |
+| **Workflow Automation** | Triaged issues → classified → labeled → commented | GitHub OAuth tools, Runbook-driven automation |
 
 ---
 
@@ -581,7 +641,7 @@ Everything below was configured automatically when you ran `azd up`:
 - [] Knowledge base files uploaded (post-provision script)
 - [] Incident handler subagent created (post-provision script)
 - [] Incident response plan created (post-provision script)
-- [] *(If GitHub PAT)* GitHub MCP connector, code-analyzer, issue-triager, sample customer issues (post-provision script)
+- [] *(If GitHub configured)* GitHub OAuth connector, code-analyzer, issue-triager, sample customer issues (post-provision script)
 
 ---
 
