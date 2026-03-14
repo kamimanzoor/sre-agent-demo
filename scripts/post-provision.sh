@@ -131,7 +131,7 @@ elif [ -n "$ACR_NAME" ]; then
     az acr build \
       --registry "$ACR_NAME" \
       --image "grubify-api:latest" \
-      --file "GrubifyApi/Dockerfile" \
+      --file "Dockerfile" \
       "${GRUBIFY_REPO}#main:GrubifyApi" \
       --no-logs --output none 2>/dev/null
   fi
@@ -179,7 +179,7 @@ elif [ -n "$ACR_NAME" ]; then
     az acr build \
       --registry "$ACR_NAME" \
       --image "grubify-frontend:latest" \
-      --file "grubify-frontend/Dockerfile" \
+      --file "Dockerfile" \
       "${GRUBIFY_REPO}#main:grubify-frontend" \
       --no-logs --output none 2>/dev/null
   fi
